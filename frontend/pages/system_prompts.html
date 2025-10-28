@@ -51,9 +51,14 @@
                 <h1 class="text-3xl font-bold text-gray-800">
                     <i class="fas fa-comment-dots mr-2 text-purple-600"></i>系统提示词管理
                 </h1>
-                <button @click="openCreateModal" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    <i class="fas fa-plus mr-2"></i>新建提示词
-                </button>
+                <div class="flex space-x-3">
+                    <button @click="showBatchImport = true" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <i class="fas fa-file-import mr-2"></i>批量导入
+                    </button>
+                    <button @click="openCreateModal" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>新建提示词
+                    </button>
+                </div>
             </div>
 
             <!-- 分类筛选 -->
@@ -201,6 +206,104 @@
                 </div>
             </div>
         </div>
+
+        <!-- 批量导入模态框 -->
+        <div v-if="showBatchImport" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-screen overflow-y-auto">
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                        <i class="fas fa-file-import mr-2 text-green-600"></i>
+                        批量导入系统提示词
+                    </h2>
+                    
+                    <div class="space-y-6">
+                        <!-- 格式说明 -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-blue-900 mb-2">
+                                <i class="fas fa-info-circle mr-2"></i>导入格式说明
+                            </h3>
+                            <div class="text-sm text-blue-800 space-y-2">
+                                <p>支持两种格式：</p>
+                                <p><strong>1. JSON 格式：</strong></p>
+                                <pre class="bg-white p-2 rounded text-xs overflow-x-auto">[
+  {
+    "name": "提示词名称",
+    "category": "分类",
+    "content": "提示词内容",
+    "description": "描述（可选）"
+  }
+]</pre>
+                                <p><strong>2. 简单文本格式（每3行为一组）：</strong></p>
+                                <pre class="bg-white p-2 rounded text-xs overflow-x-auto">提示词名称
+分类
+提示词内容
+---
+下一个提示词名称
+分类
+内容...</pre>
+                            </div>
+                        </div>
+
+                        <!-- 输入区域 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                粘贴导入内容
+                            </label>
+                            <textarea v-model="batchImportText" 
+                                      rows="15"
+                                      placeholder="在此粘贴 JSON 或文本格式的提示词..."
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"></textarea>
+                        </div>
+
+                        <!-- 预览 -->
+                        <div v-if="parsedBatchPrompts.length > 0">
+                            <h3 class="font-semibold text-gray-800 mb-3">
+                                <i class="fas fa-eye mr-2"></i>
+                                预览 ({{ parsedBatchPrompts.length }} 条)
+                            </h3>
+                            <div class="max-h-64 overflow-y-auto space-y-2">
+                                <div v-for="(prompt, index) in parsedBatchPrompts" :key="index"
+                                     class="bg-gray-50 border rounded-lg p-3">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex-1">
+                                            <div class="font-medium text-gray-800">{{ prompt.name }}</div>
+                                            <div class="text-xs text-blue-600 mt-1">{{ prompt.category || '无分类' }}</div>
+                                            <div class="text-sm text-gray-600 mt-1 line-clamp-2">{{ prompt.content }}</div>
+                                        </div>
+                                        <button @click="removeBatchPrompt(index)" 
+                                                class="text-red-600 hover:text-red-800 ml-2">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 错误提示 -->
+                        <div v-if="batchImportError" class="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <p class="text-red-800 text-sm">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                {{ batchImportError }}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" 
+                                @click="closeBatchImport" 
+                                class="px-6 py-2 border rounded-lg hover:bg-gray-100">
+                            取消
+                        </button>
+                        <button @click="executeBatchImport" 
+                                :disabled="parsedBatchPrompts.length === 0 || saving"
+                                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400">
+                            <i class="fas fa-spinner fa-spin mr-2" v-if="saving"></i>
+                            {{ saving ? '导入中...' : `导入 ${parsedBatchPrompts.length} 条` }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/assets/js/utils/api.js"></script>
@@ -222,7 +325,10 @@
                         content: '',
                         category: '',
                         description: ''
-                    }
+                    },
+                    showBatchImport: false,
+                    batchImportText: '',
+                    batchImportError: ''
                 }
             },
             computed: {
@@ -231,6 +337,48 @@
                         return this.prompts;
                     }
                     return this.prompts.filter(p => p.category === this.selectedCategory);
+                },
+                parsedBatchPrompts() {
+                    this.batchImportError = '';
+                    if (!this.batchImportText.trim()) {
+                        return [];
+                    }
+
+                    try {
+                        // 尝试 JSON 格式
+                        const jsonData = JSON.parse(this.batchImportText);
+                        if (Array.isArray(jsonData)) {
+                            return jsonData.filter(item => item.name && item.content);
+                        }
+                        return [];
+                    } catch (e) {
+                        // JSON 解析失败，尝试文本格式
+                        try {
+                            const prompts = [];
+                            const blocks = this.batchImportText.split('---').map(b => b.trim()).filter(b => b);
+                            
+                            for (const block of blocks) {
+                                const lines = block.split('\n').map(l => l.trim()).filter(l => l);
+                                if (lines.length >= 3) {
+                                    prompts.push({
+                                        name: lines[0],
+                                        category: lines[1],
+                                        content: lines.slice(2).join('\n'),
+                                        description: ''
+                                    });
+                                }
+                            }
+                            
+                            if (prompts.length === 0 && blocks.length > 0) {
+                                this.batchImportError = '文本格式不正确，请检查格式说明';
+                            }
+                            
+                            return prompts;
+                        } catch (err) {
+                            this.batchImportError = '解析失败：' + err.message;
+                            return [];
+                        }
+                    }
                 }
             },
             async mounted() {
@@ -325,6 +473,72 @@
                     }).catch(err => {
                         console.error('复制失败:', err);
                     });
+                },
+                // 批量导入相关方法
+                closeBatchImport() {
+                    this.showBatchImport = false;
+                    this.batchImportText = '';
+                    this.batchImportError = '';
+                },
+                removeBatchPrompt(index) {
+                    // 从文本中移除对应的项
+                    const prompts = this.parsedBatchPrompts;
+                    prompts.splice(index, 1);
+                    
+                    // 重新生成文本
+                    if (prompts.length > 0) {
+                        this.batchImportText = prompts.map(p => 
+                            `${p.name}\n${p.category}\n${p.content}`
+                        ).join('\n---\n');
+                    } else {
+                        this.batchImportText = '';
+                    }
+                },
+                async executeBatchImport() {
+                    if (this.parsedBatchPrompts.length === 0) {
+                        return;
+                    }
+
+                    this.saving = true;
+                    const results = {
+                        success: 0,
+                        failed: 0,
+                        errors: []
+                    };
+
+                    try {
+                        for (const prompt of this.parsedBatchPrompts) {
+                            try {
+                                await api.post('/api/system-prompts/', {
+                                    name: prompt.name,
+                                    content: prompt.content,
+                                    category: prompt.category || null,
+                                    description: prompt.description || null
+                                });
+                                results.success++;
+                            } catch (error) {
+                                results.failed++;
+                                results.errors.push(`${prompt.name}: ${error.message}`);
+                            }
+                        }
+
+                        await this.loadPrompts();
+                        await this.loadCategories();
+                        this.closeBatchImport();
+
+                        let message = `导入完成！\n成功: ${results.success} 条`;
+                        if (results.failed > 0) {
+                            message += `\n失败: ${results.failed} 条`;
+                            if (results.errors.length > 0) {
+                                message += '\n\n错误详情:\n' + results.errors.join('\n');
+                            }
+                        }
+                        alert(message);
+                    } catch (error) {
+                        alert('批量导入失败: ' + error.message);
+                    } finally {
+                        this.saving = false;
+                    }
                 }
             }
         }).mount('#app');
@@ -333,6 +547,13 @@
     <style>
         [v-cloak] {
             display: none;
+        }
+        
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
         
         .line-clamp-3 {

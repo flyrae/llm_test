@@ -48,13 +48,38 @@
 
         <main class="max-w-7xl mx-auto px-4 py-8">
             <div class="mb-6 flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-gray-800">
-                    <i class="fas fa-cog mr-2 text-blue-600"></i>模型配置
-                </h1>
-                <button @click="showModal = true" 
-                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
-                    <i class="fas fa-plus mr-2"></i>添加模型
-                </button>
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-3xl font-bold text-gray-800">
+                        <i class="fas fa-cog mr-2 text-blue-600"></i>模型配置
+                    </h1>
+                    <!-- 视图切换按钮 -->
+                    <div class="flex bg-gray-200 rounded-lg p-1">
+                        <button @click="viewMode = 'grouped'" 
+                                :class="viewMode === 'grouped' 
+                                    ? 'bg-white text-blue-600 shadow' 
+                                    : 'text-gray-600 hover:text-gray-800'"
+                                class="px-4 py-2 rounded-md text-sm font-medium transition">
+                            <i class="fas fa-layer-group mr-2"></i>分组视图
+                        </button>
+                        <button @click="viewMode = 'list'" 
+                                :class="viewMode === 'list' 
+                                    ? 'bg-white text-blue-600 shadow' 
+                                    : 'text-gray-600 hover:text-gray-800'"
+                                class="px-4 py-2 rounded-md text-sm font-medium transition">
+                            <i class="fas fa-th-large mr-2"></i>列表视图
+                        </button>
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    <button @click="showQuickSetup = true" 
+                            class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+                        <i class="fas fa-magic mr-2"></i>快速设置
+                    </button>
+                    <button @click="showModal = true" 
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-plus mr-2"></i>添加模型
+                    </button>
+                </div>
             </div>
 
             <!-- 模型列表 -->
@@ -71,7 +96,98 @@
                 </button>
             </div>
 
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 分组视图 -->
+            <div v-if="!loading && models.length > 0 && viewMode === 'grouped'" class="space-y-6">
+                <!-- 按 endpoint 分组显示 -->
+                <div v-for="group in groupedModels" :key="group.endpoint" 
+                     class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <!-- 分组头部 - 可点击折叠 -->
+                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b">
+                        <div class="flex justify-between items-center">
+                            <div class="flex-1 cursor-pointer hover:opacity-80 transition"
+                                 @click="toggleGroupCollapse(group.endpoint)">
+                                <h3 class="text-lg font-semibold text-gray-800">
+                                    <i :class="isGroupCollapsed(group.endpoint) ? 'fas fa-chevron-right' : 'fas fa-chevron-down'" 
+                                       class="mr-2 text-gray-600 transition-transform"></i>
+                                    <i class="fas fa-server mr-2 text-blue-600"></i>
+                                    {{ group.endpoint || '未设置端点' }}
+                                </h3>
+                                <p class="text-sm text-gray-600 mt-1 ml-8">
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold"
+                                          :class="getProviderClass(group.provider)">
+                                        {{ getProviderLabel(group.provider) }}
+                                    </span>
+                                    <span class="ml-2">共 {{ group.models.length }} 个模型</span>
+                                </p>
+                            </div>
+                            <button @click.stop="editEndpointGroup(group)" 
+                                    class="ml-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center">
+                                <i class="fas fa-edit mr-2"></i>
+                                批量编辑
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 紧凑的表格式模型列表 - 可折叠 -->
+                    <div v-show="!isGroupCollapsed(group.endpoint)" class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">名称</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">模型ID</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">标签</th>
+                                    <th class="px-4 py-2 text-center text-xs font-semibold text-gray-600">Temperature</th>
+                                    <th class="px-4 py-2 text-center text-xs font-semibold text-gray-600">Max Tokens</th>
+                                    <th class="px-4 py-2 text-center text-xs font-semibold text-gray-600">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr v-for="model in group.models" :key="model.id" 
+                                    class="hover:bg-gray-50 transition">
+                                    <td class="px-4 py-3">
+                                        <div class="font-medium text-gray-800">{{ model.name }}</div>
+                                        <div v-if="model.description" class="text-xs text-gray-500 mt-1">{{ model.description }}</div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <code class="text-xs bg-gray-100 px-2 py-1 rounded">{{ model.model_name }}</code>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div v-if="model.tags" class="flex flex-wrap gap-1">
+                                            <span v-for="tag in model.tags.split(',')" :key="tag"
+                                                  class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                                                {{ tag.trim() }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-center text-sm text-gray-600">
+                                        {{ model.default_params.temperature }}
+                                    </td>
+                                    <td class="px-4 py-3 text-center text-sm text-gray-600">
+                                        {{ model.default_params.max_tokens }}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex justify-center space-x-2">
+                                            <button @click="editModel(model)" 
+                                                    class="text-blue-600 hover:text-blue-800 p-1"
+                                                    title="编辑">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button @click="deleteModel(model.id)" 
+                                                    class="text-red-600 hover:text-red-800 p-1"
+                                                    title="删除">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 列表视图 -->
+            <div v-if="!loading && models.length > 0 && viewMode === 'list'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div v-for="model in models" :key="model.id" 
                      class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition">
                     <div class="flex justify-between items-start mb-4">
@@ -121,6 +237,10 @@
                     <div class="p-6 border-b">
                         <h2 class="text-2xl font-bold text-gray-800">
                             {{ editingModel ? '编辑模型' : '添加模型' }}
+                            <span v-if="!editingModel && formData.parsed_models.length > 1" 
+                                  class="text-sm font-normal text-green-600">
+                                (批量创建 {{ formData.parsed_models.length }} 个)
+                            </span>
                         </h2>
                     </div>
                     
@@ -143,9 +263,41 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">模型名称 *</label>
-                            <input v-model="formData.model_name" required placeholder="例如: gpt-4, claude-3-opus"
-                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                模型名称 *
+                                <span class="text-xs text-gray-500">
+                                    （支持批量添加：每行一个模型名称，或用逗号分隔）
+                                </span>
+                            </label>
+                            <div class="relative">
+                                <textarea v-model="formData.model_names_input" 
+                                         :rows="formData.is_batch_mode ? 6 : 1"
+                                         required 
+                                         :placeholder="formData.is_batch_mode ? 
+                                             '每行输入一个模型名称，例如：\ngpt-4\ngpt-3.5-turbo\nclaude-3-opus' : 
+                                             '例如: gpt-4, claude-3-opus'"
+                                         class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"
+                                         @input="updateModelNames"></textarea>
+                                <button type="button" 
+                                        @click="toggleBatchMode"
+                                        class="absolute top-2 right-2 text-xs px-2 py-1 rounded transition"
+                                        :class="formData.is_batch_mode 
+                                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                                    {{ formData.is_batch_mode ? '单个模式' : '批量模式' }}
+                                </button>
+                            </div>
+                            <div v-if="formData.parsed_models.length > 1" class="mt-2">
+                                <div class="text-xs text-gray-600 mb-1">
+                                    将创建 {{ formData.parsed_models.length }} 个模型配置：
+                                </div>
+                                <div class="flex flex-wrap gap-1">
+                                    <span v-for="model in formData.parsed_models" :key="model"
+                                          class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                                        {{ model }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
                         <div v-if="formData.provider !== 'local'">
@@ -156,9 +308,59 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">API端点</label>
-                            <input v-model="formData.api_endpoint" type="url" 
-                                   placeholder="留空使用默认端点"
-                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <div class="flex space-x-2">
+                                <input v-model="formData.api_endpoint" type="url" 
+                                       placeholder="留空使用默认端点"
+                                       class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <button type="button" 
+                                        @click="fetchModelsFromEndpoint"
+                                        :disabled="!formData.api_endpoint || fetchingModels"
+                                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex items-center">
+                                    <i class="fas fa-download mr-1"></i>
+                                    <span v-if="fetchingModels">获取中...</span>
+                                    <span v-else>获取模型</span>
+                                </button>
+                            </div>
+                            <div v-if="fetchedModels.length > 0" class="mt-2">
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                                    <div class="flex items-center mb-2">
+                                        <i class="fas fa-check-circle text-green-600 mr-2"></i>
+                                        <span class="text-green-800 font-medium">
+                                            成功获取到 {{ fetchedModels.length }} 个模型！
+                                        </span>
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button @click="useAllFetchedModels" 
+                                                class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                                            <i class="fas fa-check-double mr-1"></i>全部使用
+                                        </button>
+                                        <button @click="scrollToModelSelection" 
+                                                class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                                            <i class="fas fa-hand-pointer mr-1"></i>手动选择
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="max-h-32 overflow-y-auto border rounded p-2 bg-gray-50">
+                                    <div class="grid grid-cols-2 gap-1">
+                                        <label v-for="model in fetchedModels" :key="model.id"
+                                               class="flex items-center space-x-2 cursor-pointer text-xs hover:bg-gray-100 p-1 rounded">
+                                            <input type="checkbox" 
+                                                   :value="model.id"
+                                                   v-model="selectedFetchedModels"
+                                                   class="form-checkbox h-3 w-3">
+                                            <span>{{ model.display_name }}</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div v-if="selectedFetchedModels.length > 0" class="mt-2 bg-blue-50 border border-blue-200 rounded p-2">
+                                    <button @click="useSelectedFetchedModels"
+                                            class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium">
+                                        <i class="fas fa-arrow-down mr-2"></i>
+                                        使用选中的 {{ selectedFetchedModels.length }} 个模型
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -191,7 +393,11 @@
                         <div class="flex space-x-4 pt-4">
                             <button type="submit" 
                                     class="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-                                {{ editingModel ? '更新' : '添加' }}
+                                <span v-if="editingModel">更新</span>
+                                <span v-else-if="formData.parsed_models.length > 1">
+                                    批量创建 {{ formData.parsed_models.length }} 个模型
+                                </span>
+                                <span v-else>添加模型</span>
                             </button>
                             <button type="button" @click="closeModal" 
                                     class="flex-1 bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300">
@@ -199,6 +405,253 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- 快速设置弹窗 -->
+            <div v-if="showQuickSetup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-screen overflow-y-auto m-4">
+                    <div class="p-6 border-b">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-magic mr-2 text-green-600"></i>快速设置模型
+                        </h2>
+                        <p class="text-gray-600 mt-2">从预设模板快速添加多个模型配置</p>
+                    </div>
+                    
+                    <div class="p-6">
+                        <!-- 步骤1: 选择提供商 -->
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-3">1. 选择模型服务商</h3>
+                            
+                            <!-- 搜索过滤 -->
+                            <div class="mb-4">
+                                <input v-model="providerSearch" 
+                                       placeholder="搜索服务商..."
+                                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <!-- 分类标签 -->
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <button @click="providerFilter = 'all'"
+                                        class="px-3 py-1 rounded-full text-sm transition"
+                                        :class="providerFilter === 'all' 
+                                                ? 'bg-blue-600 text-white' 
+                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'">
+                                    全部 ({{ presetTemplates.length }})
+                                </button>
+                                <button @click="providerFilter = 'international'"
+                                        class="px-3 py-1 rounded-full text-sm transition"
+                                        :class="providerFilter === 'international' 
+                                                ? 'bg-blue-600 text-white' 
+                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'">
+                                    国际服务商
+                                </button>
+                                <button @click="providerFilter = 'domestic'"
+                                        class="px-3 py-1 rounded-full text-sm transition"
+                                        :class="providerFilter === 'domestic' 
+                                                ? 'bg-blue-600 text-white' 
+                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'">
+                                    国内服务商
+                                </button>
+                                <button @click="providerFilter = 'local'"
+                                        class="px-3 py-1 rounded-full text-sm transition"
+                                        :class="providerFilter === 'local' 
+                                                ? 'bg-blue-600 text-white' 
+                                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'">
+                                    本地部署
+                                </button>
+                            </div>
+                            
+                            <!-- 服务商网格 -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                                <div v-for="template in filteredTemplates" :key="template.provider"
+                                     @click="selectProvider(template)"
+                                     class="border-2 rounded-lg p-4 cursor-pointer transition hover:shadow-md"
+                                     :class="quickSetupData.selectedProvider?.provider === template.provider 
+                                             ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-300'">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="font-semibold text-sm">{{ template.name }}</span>
+                                        <span class="px-2 py-1 rounded text-xs"
+                                              :class="getProviderClass(template.provider)">
+                                            {{ getProviderTypeLabel(template.provider) }}
+                                        </span>
+                                    </div>
+                                    <div class="text-xs text-gray-600 mb-2 break-all">
+                                        {{ getEndpointDisplay(template.endpoint) }}
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        {{ template.available_models.length }} 个可用模型
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 步骤2: 配置连接 -->
+                        <div v-if="quickSetupData.selectedProvider" class="mb-6">
+                            <h3 class="text-lg font-semibold mb-3">2. 配置连接</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div v-if="quickSetupData.selectedProvider.provider !== 'local'">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">API密钥 *</label>
+                                    <input v-model="quickSetupData.apiKey" 
+                                           type="password" 
+                                           required
+                                           placeholder="输入您的API密钥"
+                                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        API端点 <span class="text-gray-500">(可选)</span>
+                                    </label>
+                                    <input v-model="quickSetupData.endpoint" 
+                                           type="url" 
+                                           :placeholder="quickSetupData.selectedProvider.endpoint || '使用默认端点'"
+                                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 步骤3: 选择模型 -->
+                        <div v-if="quickSetupData.selectedProvider" class="mb-6">
+                            <h3 class="text-lg font-semibold mb-3">3. 选择要添加的模型</h3>
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-sm text-gray-600">
+                                    已选择 {{ quickSetupData.selectedModels.length }} / {{ quickSetupData.selectedProvider.available_models.length }} 个模型
+                                </span>
+                                <div class="space-x-2">
+                                    <button @click="selectAllModels" type="button"
+                                            class="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200">
+                                        全选
+                                    </button>
+                                    <button @click="clearModelSelection" type="button"
+                                            class="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200">
+                                        清空
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+                                <label v-for="model in quickSetupData.selectedProvider.available_models" 
+                                       :key="model.model_name"
+                                       class="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="checkbox" 
+                                           :value="model.model_name"
+                                           v-model="quickSetupData.selectedModels"
+                                           class="mt-1 form-checkbox h-4 w-4 text-blue-600">
+                                    <div class="flex-1">
+                                        <div class="font-medium text-sm">{{ model.display_name }}</div>
+                                        <div class="text-xs text-gray-600">{{ model.model_name }}</div>
+                                        <div class="text-xs text-gray-500 mt-1">{{ model.description }}</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="flex space-x-4 pt-4 border-t">
+                            <button @click="executeQuickSetup" 
+                                    :disabled="!canExecuteQuickSetup"
+                                    class="flex-1 px-6 py-3 rounded-lg font-medium transition"
+                                    :class="canExecuteQuickSetup 
+                                            ? 'bg-green-600 text-white hover:bg-green-700' 
+                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'">
+                                <i class="fas fa-magic mr-2"></i>
+                                创建 {{ quickSetupData.selectedModels.length }} 个模型配置
+                            </button>
+                            <button @click="closeQuickSetup" type="button"
+                                    class="flex-1 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300">
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 端点批量编辑弹窗 -->
+            <div v-if="showEndpointEditor" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-screen overflow-y-auto m-4">
+                    <div class="p-6 border-b bg-gradient-to-r from-blue-50 to-blue-100">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-server mr-2 text-blue-600"></i>
+                            批量编辑 Endpoint 模型
+                        </h2>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <code class="bg-white px-2 py-1 rounded">{{ editingEndpoint?.endpoint }}</code>
+                        </p>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- 现有模型列表 -->
+                        <div>
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="text-lg font-semibold text-gray-800">
+                                    <i class="fas fa-list mr-2"></i>当前模型 ({{ endpointModels.length }})
+                                </h3>
+                                <button @click="addNewModelToEndpoint" 
+                                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+                                    <i class="fas fa-plus mr-2"></i>添加新模型
+                                </button>
+                            </div>
+                            
+                            <div class="space-y-2 max-h-96 overflow-y-auto">
+                                <div v-for="(model, index) in endpointModels" :key="index"
+                                     class="border rounded-lg p-4 hover:bg-gray-50 transition">
+                                    <div class="flex items-start gap-4">
+                                        <div class="flex-1 grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">模型名称</label>
+                                                <input v-model="model.name" 
+                                                       type="text"
+                                                       class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                                       placeholder="例如: GPT-4">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">模型ID</label>
+                                                <input v-model="model.model_name" 
+                                                       type="text"
+                                                       class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                                       placeholder="例如: gpt-4">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">Temperature</label>
+                                                <input v-model.number="model.default_params.temperature" 
+                                                       type="number" step="0.1" min="0" max="2"
+                                                       class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">Max Tokens</label>
+                                                <input v-model.number="model.default_params.max_tokens" 
+                                                       type="number" min="1"
+                                                       class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                                            </div>
+                                            <div class="col-span-2">
+                                                <label class="block text-xs font-medium text-gray-700 mb-1">描述（可选）</label>
+                                                <input v-model="model.description" 
+                                                       type="text"
+                                                       class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                                       placeholder="模型描述">
+                                            </div>
+                                        </div>
+                                        <button @click="removeModelFromEndpoint(index)" 
+                                                class="text-red-600 hover:text-red-800 p-2 mt-6"
+                                                title="删除">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 底部按钮 -->
+                        <div class="flex space-x-4 pt-4 border-t">
+                            <button @click="saveEndpointModels" 
+                                    class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium">
+                                <i class="fas fa-save mr-2"></i>保存所有更改
+                            </button>
+                            <button @click="closeEndpointEditor" 
+                                    class="flex-1 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300">
+                                取消
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -214,12 +667,104 @@
                     models: [],
                     loading: false,
                     showModal: false,
+                    showQuickSetup: false,
                     editingModel: null,
-                    formData: this.getEmptyForm()
+                    formData: this.getEmptyForm(),
+                    presetTemplates: [],
+                    quickSetupData: {
+                        selectedProvider: null,
+                        apiKey: '',
+                        endpoint: '',
+                        selectedModels: []
+                    },
+                    providerSearch: '',
+                    providerFilter: 'all',
+                    fetchingModels: false,
+                    fetchedModels: [],
+                    selectedFetchedModels: [],
+                    viewMode: 'grouped', // 'grouped' 或 'list'
+                    collapsedGroups: {}, // 记录每个分组的折叠状态
+                    showEndpointEditor: false, // 显示端点批量编辑器
+                    editingEndpoint: null, // 正在编辑的端点信息
+                    endpointModels: [] // 端点下的模型列表（用于编辑）
+                }
+            },
+            computed: {
+                canExecuteQuickSetup() {
+                    return this.quickSetupData.selectedProvider && 
+                           this.quickSetupData.selectedModels.length > 0 &&
+                           (this.quickSetupData.selectedProvider.provider === 'local' || this.quickSetupData.apiKey);
+                },
+                filteredTemplates() {
+                    let filtered = this.presetTemplates;
+                    
+                    // 按类型过滤
+                    if (this.providerFilter !== 'all') {
+                        const internationalProviders = ['openai', 'anthropic', 'gemini', 'azure_openai', 'together', 'huggingface', 'cohere'];
+                        const domesticProviders = ['zhipu', 'moonshot', 'baichuan', 'doubao', 'minimax', 'deepseek'];
+                        const localProviders = ['local'];
+                        
+                        switch (this.providerFilter) {
+                            case 'international':
+                                filtered = filtered.filter(t => internationalProviders.includes(t.provider));
+                                break;
+                            case 'domestic':
+                                filtered = filtered.filter(t => domesticProviders.includes(t.provider));
+                                break;
+                            case 'local':
+                                filtered = filtered.filter(t => localProviders.includes(t.provider));
+                                break;
+                        }
+                    }
+                    
+                    // 按搜索词过滤
+                    if (this.providerSearch) {
+                        const search = this.providerSearch.toLowerCase();
+                        filtered = filtered.filter(t => 
+                            t.name.toLowerCase().includes(search) ||
+                            t.provider.toLowerCase().includes(search)
+                        );
+                    }
+                    
+                    return filtered;
+                },
+                // 按 endpoint 分组的模型
+                groupedModels() {
+                    const groups = {};
+                    this.models.forEach(model => {
+                        const key = model.api_endpoint || 'no-endpoint';
+                        if (!groups[key]) {
+                            groups[key] = {
+                                endpoint: model.api_endpoint,
+                                provider: model.provider,
+                                models: []
+                            };
+                        }
+                        groups[key].models.push(model);
+                    });
+                    return Object.values(groups);
+                }
+            },
+            watch: {
+                // 监听选中的获取模型，自动更新批量输入框
+                selectedFetchedModels: {
+                    handler(newValue) {
+                        if (newValue.length > 0) {
+                            this.formData.model_names_input = newValue.join('\n');
+                            this.formData.is_batch_mode = true;
+                            this.updateModelNames();
+                        } else if (this.fetchedModels.length > 0) {
+                            // 如果有获取的模型但用户全部取消勾选，则清空输入框
+                            this.formData.model_names_input = '';
+                            this.updateModelNames();
+                        }
+                    },
+                    deep: true
                 }
             },
             async mounted() {
                 await this.loadModels();
+                await this.loadPresetTemplates();
             },
             methods: {
                 async loadModels() {
@@ -232,11 +777,22 @@
                         this.loading = false;
                     }
                 },
+                async loadPresetTemplates() {
+                    try {
+                        const response = await api.get('/api/models/presets/list');
+                        this.presetTemplates = response.templates;
+                    } catch (error) {
+                        console.error('加载预设模板失败:', error);
+                    }
+                },
                 getEmptyForm() {
                     return {
                         name: '',
                         provider: 'openai',
                         model_name: '',
+                        model_names_input: '',
+                        parsed_models: [],
+                        is_batch_mode: false,
                         api_key: '',
                         api_endpoint: '',
                         default_params: {
@@ -254,23 +810,108 @@
                     this.editingModel = model;
                     this.formData = {
                         ...model,
+                        model_names_input: model.model_name,
+                        parsed_models: [model.model_name],
+                        is_batch_mode: false,
                         default_params: { ...model.default_params }
                     };
                     this.showModal = true;
                 },
+                toggleBatchMode() {
+                    this.formData.is_batch_mode = !this.formData.is_batch_mode;
+                    this.updateModelNames();
+                },
+                updateModelNames() {
+                    const input = this.formData.model_names_input.trim();
+                    if (!input) {
+                        this.formData.parsed_models = [];
+                        return;
+                    }
+
+                    let models = [];
+                    if (this.formData.is_batch_mode) {
+                        // 批量模式：按行分割
+                        models = input.split('\n')
+                            .map(line => line.trim())
+                            .filter(line => line.length > 0);
+                    } else {
+                        // 单个模式：按逗号分割
+                        models = input.split(',')
+                            .map(name => name.trim())
+                            .filter(name => name.length > 0);
+                    }
+                    
+                    this.formData.parsed_models = [...new Set(models)]; // 去重
+                    
+                    // 如果只有一个模型，设置为单个模式的model_name
+                    if (this.formData.parsed_models.length === 1) {
+                        this.formData.model_name = this.formData.parsed_models[0];
+                    }
+                },
                 async saveModel() {
                     try {
+                        // 确保在保存前更新解析的模型列表
+                        this.updateModelNames();
+                        
                         if (this.editingModel) {
+                            // 编辑模式：只能编辑单个模型
+                            this.formData.model_name = this.formData.parsed_models[0] || this.formData.model_names_input;
                             await api.put(`/api/models/${this.editingModel.id}`, this.formData);
+                            await this.loadModels();
+                            this.closeModal();
+                            alert('更新成功！');
                         } else {
-                            await api.post('/api/models', this.formData);
+                            // 新增模式：支持批量创建
+                            if (this.formData.parsed_models.length <= 1) {
+                                // 单个模型创建
+                                this.formData.model_name = this.formData.parsed_models[0] || this.formData.model_names_input;
+                                await api.post('/api/models', this.formData);
+                                await this.loadModels();
+                                this.closeModal();
+                                alert('保存成功！');
+                            } else {
+                                // 批量创建
+                                await this.batchCreateModels();
+                            }
                         }
-                        await this.loadModels();
-                        this.closeModal();
-                        alert('保存成功！');
                     } catch (error) {
                         alert('保存失败: ' + error.message);
                     }
+                },
+                async batchCreateModels() {
+                    const createdModels = [];
+                    const errors = [];
+                    
+                    for (let i = 0; i < this.formData.parsed_models.length; i++) {
+                        const modelName = this.formData.parsed_models[i];
+                        try {
+                            // 为每个模型创建单独的配置
+                            const modelConfig = {
+                                ...this.formData,
+                                name: this.formData.name ? `${this.formData.name} - ${modelName}` : modelName,
+                                model_name: modelName
+                            };
+                            
+                            // 删除批量相关的字段
+                            delete modelConfig.model_names_input;
+                            delete modelConfig.parsed_models;
+                            delete modelConfig.is_batch_mode;
+                            
+                            await api.post('/api/models', modelConfig);
+                            createdModels.push(modelName);
+                        } catch (error) {
+                            errors.push(`${modelName}: ${error.message}`);
+                        }
+                    }
+                    
+                    await this.loadModels();
+                    this.closeModal();
+                    
+                    let message = `成功创建 ${createdModels.length} 个模型配置！`;
+                    if (errors.length > 0) {
+                        message += `\n失败 ${errors.length} 个：\n${errors.join('\n')}`;
+                    }
+                    alert(message);
                 },
                 async deleteModel(id) {
                     if (!confirm('确定要删除这个模型吗？')) return;
@@ -287,12 +928,26 @@
                     this.showModal = false;
                     this.editingModel = null;
                     this.formData = this.getEmptyForm();
+                    this.fetchedModels = [];
+                    this.selectedFetchedModels = [];
+                    this.fetchingModels = false;
                 },
                 getProviderClass(provider) {
                     const classes = {
                         openai: 'bg-green-100 text-green-800',
                         anthropic: 'bg-purple-100 text-purple-800',
-                        local: 'bg-blue-100 text-blue-800',
+                        gemini: 'bg-blue-100 text-blue-800',
+                        azure_openai: 'bg-cyan-100 text-cyan-800',
+                        together: 'bg-orange-100 text-orange-800',
+                        huggingface: 'bg-yellow-100 text-yellow-800',
+                        cohere: 'bg-pink-100 text-pink-800',
+                        deepseek: 'bg-indigo-100 text-indigo-800',
+                        zhipu: 'bg-red-100 text-red-800',
+                        moonshot: 'bg-purple-100 text-purple-800',
+                        baichuan: 'bg-green-100 text-green-800',
+                        doubao: 'bg-blue-100 text-blue-800',
+                        minimax: 'bg-teal-100 text-teal-800',
+                        local: 'bg-gray-100 text-gray-800',
                         custom: 'bg-gray-100 text-gray-800'
                     };
                     return classes[provider] || classes.custom;
@@ -301,10 +956,295 @@
                     const labels = {
                         openai: 'OpenAI',
                         anthropic: 'Claude',
+                        gemini: 'Gemini',
+                        azure_openai: 'Azure',
+                        together: 'Together',
+                        huggingface: 'HF',
+                        cohere: 'Cohere',
+                        deepseek: 'DeepSeek',
+                        zhipu: '智谱',
+                        moonshot: '月之暗面',
+                        baichuan: '百川',
+                        doubao: '豆包',
+                        minimax: 'MiniMax',
                         local: '本地',
                         custom: '自定义'
                     };
                     return labels[provider] || provider;
+                },
+                getProviderTypeLabel(provider) {
+                    const internationalProviders = ['openai', 'anthropic', 'gemini', 'azure_openai', 'together', 'huggingface', 'cohere'];
+                    const domesticProviders = ['zhipu', 'moonshot', 'baichuan', 'doubao', 'minimax', 'deepseek'];
+                    
+                    if (provider === 'local') return '本地';
+                    if (provider === 'custom') return '自定义';
+                    if (internationalProviders.includes(provider)) return '国际';
+                    if (domesticProviders.includes(provider)) return '国内';
+                    return '其他';
+                },
+                getEndpointDisplay(endpoint) {
+                    if (!endpoint) return '自定义端点';
+                    if (endpoint.length > 50) {
+                        return endpoint.substring(0, 47) + '...';
+                    }
+                    return endpoint;
+                },
+                // 快速设置相关方法
+                selectProvider(template) {
+                    this.quickSetupData.selectedProvider = template;
+                    this.quickSetupData.selectedModels = [];
+                    this.quickSetupData.apiKey = '';
+                    this.quickSetupData.endpoint = '';
+                },
+                selectAllModels() {
+                    if (this.quickSetupData.selectedProvider) {
+                        this.quickSetupData.selectedModels = this.quickSetupData.selectedProvider.available_models.map(m => m.model_name);
+                    }
+                },
+                clearModelSelection() {
+                    this.quickSetupData.selectedModels = [];
+                },
+                async executeQuickSetup() {
+                    if (!this.canExecuteQuickSetup) return;
+                    
+                    try {
+                        const requestData = {
+                            provider: this.quickSetupData.selectedProvider.provider,
+                            api_key: this.quickSetupData.apiKey,
+                            endpoint: this.quickSetupData.endpoint,
+                            selected_models: this.quickSetupData.selectedModels
+                        };
+                        
+                        const response = await api.post('/api/models/quick-setup', requestData);
+                        
+                        if (response.success) {
+                            await this.loadModels();
+                            this.closeQuickSetup();
+                            
+                            let message = `成功创建了 ${response.created_count} 个模型配置！`;
+                            if (response.failed_count > 0) {
+                                message += `\n${response.failed_count} 个模型创建失败。`;
+                                if (response.errors.length > 0) {
+                                    message += '\n错误详情:\n' + response.errors.join('\n');
+                                }
+                            }
+                            alert(message);
+                        } else {
+                            alert('创建失败: ' + (response.errors ? response.errors.join('\n') : '未知错误'));
+                        }
+                    } catch (error) {
+                        alert('创建失败: ' + error.message);
+                    }
+                },
+                closeQuickSetup() {
+                    this.showQuickSetup = false;
+                    this.quickSetupData = {
+                        selectedProvider: null,
+                        apiKey: '',
+                        endpoint: '',
+                        selectedModels: []
+                    };
+                    this.providerSearch = '';
+                    this.providerFilter = 'all';
+                },
+                // 从端点获取模型列表
+                async fetchModelsFromEndpoint() {
+                    if (!this.formData.api_endpoint) {
+                        alert('请先输入API端点');
+                        return;
+                    }
+                    
+                    this.fetchingModels = true;
+                    this.fetchedModels = [];
+                    this.selectedFetchedModels = [];
+                    
+                    try {
+                        const response = await api.post('/api/models/fetch-models', {
+                            api_endpoint: this.formData.api_endpoint,
+                            api_key: this.formData.api_key,
+                            provider: this.formData.provider
+                        });
+                        
+                        if (response.success) {
+                            this.fetchedModels = response.models;
+                            if (this.fetchedModels.length === 0) {
+                                alert('未找到任何模型，请检查端点和API密钥');
+                            } else {
+                                alert(`成功获取到 ${this.fetchedModels.length} 个模型！`);
+                            }
+                        } else {
+                            alert('获取模型失败: ' + response.error);
+                        }
+                    } catch (error) {
+                        alert('获取模型失败: ' + error.message);
+                    } finally {
+                        this.fetchingModels = false;
+                    }
+                },
+                useAllFetchedModels() {
+                    const modelNames = this.fetchedModels.map(m => m.id).join('\n');
+                    this.formData.model_names_input = modelNames;
+                    this.formData.is_batch_mode = true;
+                    this.updateModelNames();
+                    
+                    // 给用户提示并滚动到模型名称输入框
+                    alert(`已选择全部 ${this.fetchedModels.length} 个模型，请查看下方的模型名称输入框，然后点击"批量创建"按钮完成添加`);
+                    
+                    // 滚动到模型名称输入框
+                    this.scrollToModelSelection();
+                },
+                useSelectedFetchedModels() {
+                    if (this.selectedFetchedModels.length === 0) {
+                        alert('请先选择要使用的模型');
+                        return;
+                    }
+                    
+                    const modelNames = this.selectedFetchedModels.join('\n');
+                    this.formData.model_names_input = modelNames;
+                    this.formData.is_batch_mode = true;
+                    this.updateModelNames();
+                    this.selectedFetchedModels = [];
+                    
+                    // 给用户提示并滚动到模型名称输入框
+                    alert(`已选择 ${modelNames.split('\n').length} 个模型，请查看下方的模型名称输入框，然后点击"批量创建"按钮完成添加`);
+                    
+                    // 滚动到模型名称输入框
+                    this.scrollToModelSelection();
+                },
+                scrollToModelSelection() {
+                    setTimeout(() => {
+                        const modelInput = document.querySelector('textarea[v-model="formData.model_names_input"]');
+                        if (modelInput) {
+                            modelInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            modelInput.focus();
+                        }
+                    }, 100);
+                },
+                // 切换分组折叠状态
+                toggleGroupCollapse(endpoint) {
+                    const key = endpoint || 'no-endpoint';
+                    this.collapsedGroups[key] = !this.collapsedGroups[key];
+                },
+                // 检查分组是否折叠
+                isGroupCollapsed(endpoint) {
+                    const key = endpoint || 'no-endpoint';
+                    return this.collapsedGroups[key] || false;
+                },
+                // 编辑端点分组
+                editEndpointGroup(group) {
+                    this.editingEndpoint = {
+                        endpoint: group.endpoint,
+                        provider: group.provider,
+                        api_key: group.models[0]?.api_key || ''
+                    };
+                    // 深拷贝模型列表用于编辑
+                    this.endpointModels = group.models.map(model => ({
+                        id: model.id,
+                        name: model.name,
+                        model_name: model.model_name,
+                        description: model.description || '',
+                        tags: model.tags || '',
+                        api_key: model.api_key, // 保存原有的 API key
+                        default_params: {
+                            temperature: model.default_params.temperature,
+                            top_p: model.default_params.top_p,
+                            max_tokens: model.default_params.max_tokens,
+                            frequency_penalty: model.default_params.frequency_penalty
+                        },
+                        isNew: false
+                    }));
+                    this.showEndpointEditor = true;
+                },
+                // 添加新模型到端点
+                addNewModelToEndpoint() {
+                    this.endpointModels.push({
+                        id: null,
+                        name: '',
+                        model_name: '',
+                        description: '',
+                        tags: '',
+                        api_key: this.editingEndpoint.api_key, // 使用 endpoint 的 API key
+                        default_params: {
+                            temperature: 0.7,
+                            top_p: 1.0,
+                            max_tokens: 1000,
+                            frequency_penalty: 0
+                        },
+                        isNew: true
+                    });
+                },
+                // 从端点移除模型
+                removeModelFromEndpoint(index) {
+                    if (confirm('确定要删除这个模型吗？')) {
+                        this.endpointModels.splice(index, 1);
+                    }
+                },
+                // 保存端点模型
+                async saveEndpointModels() {
+                    try {
+                        const updates = [];
+                        const creates = [];
+                        const deletes = [];
+                        
+                        // 找出要删除的模型
+                        const currentIds = this.endpointModels.map(m => m.id).filter(id => id);
+                        const originalGroup = this.groupedModels.find(g => g.endpoint === this.editingEndpoint.endpoint);
+                        const originalIds = originalGroup.models.map(m => m.id);
+                        deletes.push(...originalIds.filter(id => !currentIds.includes(id)));
+                        
+                        // 分类处理模型
+                        for (const model of this.endpointModels) {
+                            if (!model.model_name || !model.name) {
+                                continue; // 跳过空模型
+                            }
+                            
+                            const modelData = {
+                                name: model.name,
+                                provider: this.editingEndpoint.provider,
+                                model_name: model.model_name,
+                                api_key: model.api_key || this.editingEndpoint.api_key, // 优先使用模型自己的 API key
+                                api_endpoint: this.editingEndpoint.endpoint,
+                                description: model.description,
+                                tags: model.tags,
+                                default_params: model.default_params
+                            };
+                            
+                            if (model.id && !model.isNew) {
+                                // 更新现有模型
+                                updates.push({ id: model.id, data: modelData });
+                            } else {
+                                // 创建新模型
+                                creates.push(modelData);
+                            }
+                        }
+                        
+                        // 执行删除
+                        for (const id of deletes) {
+                            await api.delete(`/api/models/${id}`);
+                        }
+                        
+                        // 执行更新
+                        for (const update of updates) {
+                            await api.put(`/api/models/${update.id}`, update.data);
+                        }
+                        
+                        // 执行创建
+                        for (const createData of creates) {
+                            await api.post('/api/models', createData);
+                        }
+                        
+                        await this.loadModels();
+                        this.closeEndpointEditor();
+                        alert(`保存成功！\n新增: ${creates.length} 个\n更新: ${updates.length} 个\n删除: ${deletes.length} 个`);
+                    } catch (error) {
+                        alert('保存失败: ' + error.message);
+                    }
+                },
+                // 关闭端点编辑器
+                closeEndpointEditor() {
+                    this.showEndpointEditor = false;
+                    this.editingEndpoint = null;
+                    this.endpointModels = [];
                 }
             }
         }).mount('#app');
