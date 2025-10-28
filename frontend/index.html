@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Test Tool - 大模型测试工具</title>
+    <script src="/assets/vendor/vue/vue.global.js"></script>
+    <script src="/assets/vendor/tailwind/tailwind.js"></script>
+    <link rel="stylesheet" href="/assets/vendor/fontawesome/all.min.css">
+    <style>
+        [v-cloak] { display: none; }
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s;
+        }
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" v-cloak>
+        <nav class="bg-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-robot text-2xl text-blue-600"></i>
+                        <span class="text-xl font-bold text-gray-800">LLM Test Tool</span>
+                    </div>
+                    <div class="flex space-x-4">
+                        <a href="/" 
+                           class="px-4 py-2 rounded-md transition-colors"
+                           :class="currentPage === 'home' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'">
+                            <i class="fas fa-home mr-2"></i>首页
+                        </a>
+                        <a href="/pages/models.html" 
+                           class="px-4 py-2 rounded-md transition-colors text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2"></i>模型配置
+                        </a>
+                        <a href="/pages/testcases.html" 
+                           class="px-4 py-2 rounded-md transition-colors text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-tasks mr-2"></i>测试用例
+                        </a>
+                        <a href="/pages/tools.html" 
+                           class="px-4 py-2 rounded-md transition-colors text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-wrench mr-2"></i>工具管理
+                        </a>
+                        <a href="/pages/system_prompts.html" 
+                           class="px-4 py-2 rounded-md transition-colors text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-comment-dots mr-2"></i>系统提示词
+                        </a>
+                        <a href="/pages/debug.html" 
+                           class="px-4 py-2 rounded-md transition-colors text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-bug mr-2"></i>调试
+                        </a>
+                        <a href="/pages/compare.html" 
+                           class="px-4 py-2 rounded-md transition-colors text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-code-compare mr-2"></i>对比测试
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <!-- 欢迎信息 -->
+            <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-xl p-8 text-white mb-8">
+                <h1 class="text-4xl font-bold mb-4">
+                    <i class="fas fa-rocket mr-3"></i>欢迎使用 LLM 测试工具
+                </h1>
+                <p class="text-xl opacity-90">
+                    强大的大语言模型测试平台，支持多模型对比、批量测试和详细性能分析
+                </p>
+            </div>
+
+            <!-- 功能卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow cursor-pointer"
+                     onclick="location.href='/pages/models.html'">
+                    <div class="text-blue-500 text-4xl mb-4">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">模型配置</h3>
+                    <p class="text-gray-600">管理 OpenAI、Claude、本地模型等多种大模型配置</p>
+                    <div class="mt-4 text-sm text-gray-500">
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ stats.modelCount }} 个模型</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow cursor-pointer"
+                     onclick="location.href='/pages/testcases.html'">
+                    <div class="text-green-500 text-4xl mb-4">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">测试用例</h3>
+                    <p class="text-gray-600">创建和管理测试用例，支持批量导入</p>
+                    <div class="mt-4 text-sm text-gray-500">
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded">{{ stats.testCaseCount }} 个用例</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow cursor-pointer"
+                     onclick="location.href='/pages/tools.html'">
+                    <div class="text-indigo-500 text-4xl mb-4">
+                        <i class="fas fa-wrench"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">工具管理</h3>
+                    <p class="text-gray-600">定义工具和函数，测试模型的工具调用能力</p>
+                    <div class="mt-4 text-sm text-gray-500">
+                        <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded">Function Calling</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow cursor-pointer"
+                     onclick="location.href='/pages/system_prompts.html'">
+                    <div class="text-purple-500 text-4xl mb-4">
+                        <i class="fas fa-comment-dots"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">系统提示词</h3>
+                    <p class="text-gray-600">管理系统提示词模板，快速复用常用提示词</p>
+                    <div class="mt-4 text-sm text-gray-500">
+                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded">模板管理</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow cursor-pointer"
+                     onclick="location.href='/pages/debug.html'">
+                    <div class="text-pink-500 text-4xl mb-4">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">调试工具</h3>
+                    <p class="text-gray-600">实时测试模型响应，调整参数观察效果</p>
+                    <div class="mt-4 text-sm text-gray-500">
+                        <span class="bg-pink-100 text-pink-800 px-2 py-1 rounded">实时调试</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow cursor-pointer"
+                     onclick="location.href='/pages/compare.html'">
+                    <div class="text-orange-500 text-4xl mb-4">
+                        <i class="fas fa-code-compare"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">对比测试</h3>
+                    <p class="text-gray-600">多模型并行测试，全方位性能对比</p>
+                    <div class="mt-4 text-sm text-gray-500">
+                        <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded">批量对比</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速开始 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-play-circle mr-2 text-blue-500"></i>快速开始
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex items-start space-x-4">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">
+                            1
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">配置模型</h4>
+                            <p class="text-gray-600">在"模型配置"页面添加您的大模型，包括 API 密钥和参数设置</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-4">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">
+                            2
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">创建测试用例</h4>
+                            <p class="text-gray-600">在"测试用例"页面创建测试提示词，或批量导入现有用例</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-4">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold">
+                            3
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">开始测试</h4>
+                            <p class="text-gray-600">使用"调试工具"单独测试，或使用"对比测试"批量运行多模型对比</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="bg-white border-t mt-12 py-6">
+            <div class="max-w-7xl mx-auto px-4 text-center text-gray-600">
+                <p>&copy; 2025 LLM Test Tool. 强大的大模型测试平台</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/assets/js/utils/api.js"></script>
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    currentPage: 'home',
+                    stats: {
+                        modelCount: 0,
+                        testCaseCount: 0
+                    }
+                }
+            },
+            async mounted() {
+                await this.loadStats();
+            },
+            methods: {
+                async loadStats() {
+                    try {
+                        const [models, testCases] = await Promise.all([
+                            api.get('/api/models'),
+                            api.get('/api/testcases')
+                        ]);
+                        this.stats.modelCount = models.length;
+                        this.stats.testCaseCount = testCases.length;
+                    } catch (error) {
+                        console.error('Failed to load stats:', error);
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

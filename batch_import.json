@@ -1,0 +1,824 @@
+[
+    {
+        "name": "create_schedule",
+        "description": "增加、新建个人日程安排的工具，在需要增加、创建、新建新的个人日程时使用本工具；同时会查出新日程开始时间当天的全部日程",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "startTime": {
+                    "description": "日程开始时间，格式为YYYY-MM-DD hh:mm:ss",
+                    "type": "string"
+                },
+                "endTime": {
+                    "description": "日程结束时间，格式为YYYY-MM-DD hh:mm:ss",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "日程内容",
+                    "type": "string"
+                }
+            },
+            "required": ["startTime", "endTime", "title"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "startTime": {
+                    "description": "日程开始时间，格式为YYYY-MM-DD hh:mm:ss",
+                    "type": "string"
+                },
+                "endTime": {
+                    "description": "日程结束时间，格式为YYYY-MM-DD hh:mm:ss",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "日程内容",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "contact_search",
+        "description": "查询通讯录的工具，在需要查询通讯录时使用本工具,只要识别到姓名后就可以用姓名和姓名拼音作为参数进行查询调用工具了，不用向用户询问过多的信息，但是调用工具时姓名和拼音两个参数都要传；如果识别到用户的邮件、手机号码、电话分机号、手机短号号码其中之一也可以直接调用工具",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "orgName": {
+                    "description": "机构名称",
+                    "type": "string"
+                },
+                "userName": {
+                    "description": "姓名",
+                    "type": "string"
+                },
+                "keywords": {
+                    "description": "姓名拼音，拼音全部小写，不带空格，不带音调",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "邮件地址",
+                    "type": "string"
+                },
+                "ehrPosition": {
+                    "description": "职位",
+                    "type": "string"
+                },
+                "cellPhone": {
+                    "description": "手机号码，一般长度为11位",
+                    "type": "string"
+                },
+                "telNo": {
+                    "description": "座机电话号码",
+                    "type": "string"
+                },
+                "telNoExt": {
+                    "description": "电话分机号",
+                    "type": "string"
+                },
+                "shortNo": {
+                    "description": "手机短号号码，一般长度为6位",
+                    "type": "string"
+                }
+            },
+            "required": ["userName", "keywords"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "orgSeqName": {
+                    "description": "机构名称",
+                    "type": "string"
+                },
+                "userName": {
+                    "description": "姓名",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "邮件地址",
+                    "type": "string"
+                },
+                "cellPhone": {
+                    "description": "手机号码，一般长度为11位",
+                    "type": "string"
+                },
+                "telNo": {
+                    "description": "座机电话号码",
+                    "type": "string"
+                },
+                "telNoExt": {
+                    "description": "电话分机号",
+                    "type": "string"
+                },
+                "shortNo": {
+                    "description": "手机短号号码，一般长度为6位",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "query_system_responsible_person",
+        "description": "查询相关功能、菜单和系统负责人的工具，在需要查询某个功能、菜单、系统或其他的某些方面相关负责人时使用此工具。请将功能、菜单、系统名称单独作为参数调用工具",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "keywords": {
+                    "description": "查询关键字，可以为功能、菜单和系统等",
+                    "type": "string"
+                }
+            },
+            "required": ["keywords"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "按请求的关键字查询出的数据完整名称",
+                    "type": "string"
+                },
+                "busiUser": {
+                    "description": "业务负责人",
+                    "type": "string"
+                },
+                "techUser": {
+                    "description": "技术负责人",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "query_schedule",
+        "description": "查询不是行领导任德奇、钱斌、张宝江、徐吉明、殷久勇、徐敏、周万阜、钱斌、顾斌、涂宏、林骅、刘建军、何兆斌、曹国鸿、李龙成、汪林平、常保升、穆国新等的用户的普通日程的工具，在需要根据时间范围查询本人普通日程时使用本工具。不可以用来新建或新增日程,只能查询本人的日程安排，当你发现用户输入的被查询人的名字与本人名字不符时请不要查询日程，提示用户只能查询本人的日程安排",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "startTime": {
+                    "description": "查询时间范围的最小值，格式为YYYY-MM-DD hh:mm:ss",
+                    "type": "string"
+                },
+                "endTime": {
+                    "description": "查询时间范围的最大值，格式为YYYY-MM-DD hh:mm:ss",
+                    "type": "string"
+                }
+            },
+            "required": ["startTime", "endTime"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "startTime": {
+                    "description": "日程开始时间，格式为YYYY-MM-DD hh:mm:ss",
+                    "type": "string"
+                },
+                "endTime": {
+                    "description": "日程结束时间，格式为YYYY-MM-DD hh:mm:ss",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "日程内容",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "create_personal_leave",
+        "description": "用户创建或发起因私请假流程的工具，不可以用于查询因私请假流程或者请假信息，当用户需要创建或发起因私请假流程时使用本工具",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "leaveType": {
+                    "description": "年休假、社会公益假、病假、工伤假、事假、婚假、丧假、产假、陪产假、哺乳假、授乳假、节育手术假、产前工间休息、产前检查、育儿假、调休",
+                    "type": "string",
+                    "enum": [
+                        "年休假",
+                        "社会公益假",
+                        "病假",
+                        "工伤假",
+                        "事假",
+                        "婚假",
+                        "丧假",
+                        "产假",
+                        "陪产假",
+                        "哺乳假",
+                        "授乳假",
+                        "节育手术假",
+                        "产前工间休息",
+                        "产前检查",
+                        "育儿假",
+                        "调休"
+                    ]
+                },
+                "reason": {
+                    "description": "请假事由",
+                    "type": "string"
+                },
+                "startDate": {
+                    "description": "请假开始日期，格式YYYY-MM-DD",
+                    "type": "string"
+                },
+                "endDate": {
+                    "description": "请假结束日期，格式YYYY-MM-DD",
+                    "type": "string"
+                },
+                "startTimeType": {
+                    "description": "上午、下午",
+                    "type": "string",
+                    "enum": ["上午", "下午"]
+                },
+                "endTimeType": {
+                    "description": "上午、下午",
+                    "type": "string",
+                    "enum": ["上午", "下午"]
+                },
+                "destination": {
+                    "description": "目的地",
+                    "type": "string"
+                }
+            },
+            "required": ["leaveType", "reason", "startDate", "endDate"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "isSkipPage": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "skipPageParams": {
+                    "description": "",
+                    "type": "object"
+                }
+            }
+        }
+    },
+    {
+        "name": "leave_application_public_out_of_province",
+        "description": "用户创建或发起因公外出流程的工具，不可以用于查询因公外出流程或者请假信息，当用户需要创建或发起因公外出流程时使用本工具。请注意：首先根据“查询用户是否具备因私请假/因公外出权限的工具”确认申请人相关信息，用于后续阶段的判断，如果用户无操作此功能权限，那么直接告诉用户联系管理员，否则询问因公外出的其他信息",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "outsideType": {
+                    "description": "总行行领导召集、京津冀地区、长三角地区、粤港澳地区、省内外出、其他",
+                    "type": "string",
+                    "enum": [
+                        "总行行领导召集",
+                        "京津冀地区",
+                        "长三角地区",
+                        "粤港澳地区",
+                        "省内外出",
+                        "其他"
+                    ]
+                },
+                "reason": {
+                    "description": "请假事由",
+                    "type": "string"
+                },
+                "startDate": {
+                    "description": "请假开始日期，格式YYYY-MM-DD",
+                    "type": "string"
+                },
+                "endDate": {
+                    "description": "请假结束日期，格式YYYY-MM-DD",
+                    "type": "string"
+                },
+                "startTimeType": {
+                    "description": "上午、下午、上班前、下班后",
+                    "type": "string",
+                    "enum": ["上午", "下午", "上班前", "下班后"]
+                },
+                "endTimeType": {
+                    "description": "上午、下午、上班前、下班后",
+                    "type": "string",
+                    "enum": ["上午", "下午", "上班前", "下班后"]
+                },
+                "destination": {
+                    "description": "目的地",
+                    "type": "string"
+                }
+            },
+            "required": ["outsideType", "reason", "startDate", "endDate"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "isSkipPage": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "skipPageParams": {
+                    "description": "",
+                    "type": "object"
+                }
+            }
+        }
+    },
+    {
+        "name": "query_free_meeting_room",
+        "description": "查询空闲会议室的工具，在需要根据时间范围查询空闲会议室或查询某个会议室一周的空闲时间使用本工具",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "meetingRoomName": {
+                    "description": "会议室名称，如果用户没有指定会议室，则为不传此项",
+                    "type": "string"
+                },
+                "startTime": {
+                    "description": "开始时间戳，格式如 yyyy-mm-dd HH:MM:SS，如果用户没有指定开始时间戳，则默认为本周开始时间戳",
+                    "type": "string"
+                },
+                "endTime": {
+                    "description": "结束时间戳 ，格式如 yyyy-mm-dd HH:MM:SS，如果用户没有指定结束时间戳，则默认为本周结束时间戳",
+                    "type": "string"
+                }
+            },
+            "required": ["startTime", "endTime"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "unoccupiedMeetingTime": {
+                    "description": "某个会议室一周的空闲时间",
+                    "type": "array"
+                },
+                "meetingRoomName": {
+                    "description": "某个时间段空闲会议室",
+                    "type": "array"
+                }
+            }
+        }
+    },
+    {
+        "name": "query_ecampus_tool",
+        "description": "查询用户本人的e校园工具，在需要查询用户本人的e校园学习任务、用户本人的e校园学时的时候使用本工具。 注意此工具不需要任何输入信息，不要试图引导用户提供更多信息。 回答生成内容前必须加上“目前只可为您查到登陆人的e校园学习任务信息” 如果用户输入了指定用户的信息，则正常调用工具，并在返回结果前加上“目前只可为您查到登陆人的e校园学习任务信息”",
+        "parameters": {},
+        "results": {
+            "type": "object",
+            "properties": {
+                "endDate": {
+                    "description": "结束时间",
+                    "type": "string"
+                },
+                "startDate": {
+                    "description": "开始时间",
+                    "type": "string"
+                },
+                "taskId": {
+                    "description": "任务ID",
+                    "type": "string"
+                },
+                "taskName": {
+                    "description": "任务名称",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "query_bo_com_rule_tool",
+        "description": "##### 角色 - 你是一个专业的总行规章制度查询助手，会调用工具\"queryBoComRuleTool\"查询我需要查询的规章制度的血缘关系。 ##### 要求 - 我会提出一段问题，你首先需要从问题中提取出规章制度的名称，其次提取出需要查询的关系类型。关系类型有 \"上游\"(upLevel)， \"下游\"(downLevel)和 \"继承\"(inheritance)关系。你需要根据问题的语义自行判断出查询的关系是哪一个。 - 如询问 \"哪些制度是 按照/依据/根据 xxxxx制度制定\"类似含义的问题时，规章制度的名称应该为\"xxxxx制度\"，查询的关系应该为\"下游\"。 - 如询问 \"xxxxx制度的来源/依据/根据是什么制度\"类似含义的问题时，规章制度的名称应该为\"xxxxx制度\"，查询的关系应该为\"上游\"。 - 如询问 \"xxxxx制度是什么制度的替代/更新/j继承\"类似含义的问题时，规章制度的名称应该为\"xxxxx制度\"，查询的关系应该为\"继承\" ##### 规则 - 回答规章制度有关问题时，必须调用queryBoComRuleTool工具 - 若无特殊说明，top参数值为1 - 将所有查询到的结果全部返回，若规章制度有属性，则也返回，格式清晰易懂 - 若查询结果中relation字段为空，则表明未查询到相关内容 - 不要返回任何代码块和json结果",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ruleName": {
+                    "description": "规章制度名称",
+                    "type": "string"
+                },
+                "relation": {
+                    "description": "关系类型，置空为全部关系，若查询上游关系，则值为'upLevel', 若查询下游关系，则值为'downLevel', 若查询继承关系，则值为'inheritance'",
+                    "type": "string"
+                },
+                "top": {
+                    "description": "匹配ruleName的数量，默认1",
+                    "type": "integer"
+                }
+            },
+            "required": ["ruleName"]
+        },
+        "results": {
+            "properties": {
+                "data": {
+                    "description": "",
+                    "type": "array"
+                }
+            }
+        }
+    },
+    {
+        "name": "zero_loan_question_answer",
+        "description": "零贷知识问答，在用户需要使用零贷知识问答的时候调用此工具",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "question": {
+                    "description": "用户提问的问题",
+                    "type": "string"
+                }
+            },
+            "required": ["question"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "description": "用户问题的的回答",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "image_recognition_plugin",
+        "description": "图片识别",
+        "parameters": {},
+        "results": {}
+    },
+    {
+        "name": "file_upload_plugin",
+        "description": "搜索用户上传的文档中的知识的工具，在需要搜索用户上传的文档中的知识时使用本工具",
+        "parameters": {},
+        "results": {}
+    },
+    {
+        "name": "query_canteen_menu",
+        "description": "# 角色声明 你是一个食堂菜单查询专家，专门为用户提供交银大厦、张江园区、锦明大厦、漕河泾园区食堂的每日菜单信息。你能够根据用户的需求，快速准确地检索和更新相关食堂的菜单内容。 ## 技能模块 ### 技能1: 确定查询需求 - 通过提问等方式明确用户的查询目标 - 根据用户回答选择正确的食堂（交银大厦或张江园区） ### 技能2: 执行菜单查询 - 根据选定的食堂使用正确的partOrgId进行查询 - #### 技能2.1: 查询交银大厦菜单 1. 使用partOrgId是0000000003进行查询 2. 从数据库或信息系统中检索当日菜单 - #### 技能2.2: 查询张江园区菜单 1. 使用partOrgId是0000000002进行查询 2. 从数据库或信息系统中检索当日菜单 - #### 技能2.3: 查询锦明大厦菜单 1. 使用partOrgId是0000000004进行查询 2. 从数据库或信息系统中检索当日菜单 - #### 技能2.4: 查询漕河泾园区菜单 1. 使用partOrgId是0000000004进行查询 2. 从数据库或信息系统中检索当日菜单 ### 技能3: 反馈与更新 - 向用户提供查询到的菜单信息 - 根据用户反馈进行必要的菜单信息更新或修正 ## 限制条件 - 仅限于交银大厦，张江园区，锦明大厦和漕河泾园区食堂的菜单查询，如遇到查询其他地址的，不查询 - 必须使用正确的partOrgId进行查询 - 确保查询信息的准确性和时效性 - 在提供信息时保护用户隐私和数据安全",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "partOrgId": {
+                    "description": "园区编号",
+                    "type": "string"
+                }
+            },
+            "required": ["partOrgId"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "returnCode": {
+                    "description": "返回值",
+                    "type": "string"
+                },
+                "returnMSG": {
+                    "description": "错误码",
+                    "type": "string"
+                },
+                "weekMenuList": {
+                    "description": "请求业务数据",
+                    "type": "object"
+                },
+                "rsvFld1": {
+                    "description": "保留域1",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "query_privacy_leave_permission",
+        "description": "查询用户是否具备因私请假/因公外出权限的工具，在识别到用户有因公外出或因私请假意图时，请先调用此工具判断用户是否有调用权限，若用户有权限再去询问用户更多的信息去因私请假/因公外出工具，若用户没有权限则不必再向用户询问更多的信息",
+        "parameters": {},
+        "results": {
+            "type": "object",
+            "properties": {
+                "result": {
+                    "description": "Y：有权限，N：无权限",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "employee_apply_private_passport",
+        "description": "员工申领因私证照（包括因私护照、港澳通行证、台湾通行证）的工具，员工要申领因私护照、港澳通行证、台湾通行证中任意一本或多本时使用该工具。通过分阶段询问获取，各阶段情况不同，下一阶段需获取的信息也不相同。第一阶段需确认：证件类型、申领类型。关于证件类型：若员工准确提及申请的证照类型，按照员工提及的证照进行申请。若员工没有明确申请哪种证件，可以按照如下逻辑判断：若提到台湾，证件类型传入台湾通行证；若提到香港或者澳门，证件类型传入港澳通行证；若提及台湾、香港、澳门以外其他国家或地区，证件类型传入因私护照。关于申请类型：首先，调用“查询员工本人因私证照信息的工具”查询员工因私护照信息、港澳通行证信息、台湾通行证信息。若没有证件号码且不使用，申请类型为仅新办。若有证件号码且失效且不在库且不使用，申请类型为仅新办。若没有证件号码且使用，申请类型为新办使用。若有证件号码且失效且不在库且使用，申请类型为新办使用。若有证件号码且有效，申请类型为领用。若有证件号码且失效且在库且不使用，申请类型为仅换发。若有证件号码且失效且在库且使用时为换发使用。若员工提及证照已过期、将要过期、污损、页满，申请类型默认为换发。其他情况由用户确定申请类型。第二阶段根据第一阶段信息进行不同信息的确认：根据申领类型不同，收集的信息也不同：若申领类型为仅新办或仅换发，则是否使用为否，否则是否使用为是、证照用途为空、是否出国境为否。若申领类型为新办使用或领用或换发使用，需确认是否出国境、证照用途或证照其他用途。若员工提及旅游、游玩等，则是否出国境为是、证照用途为旅游；若员工提及看望亲人、探亲等，则是否出国境为是、证照用途为探亲；若员工提及办理签证，则是否出国境默认为否，证照用途为办理签证；若员工提及考试，则是否出国境默认为否，证照用途为考试；其他情况则向用户提问。若申领类型为换发或换发使用，需确认换发原因，否则换发原因默认为空。若员工提及证照已过期、将要过期、污损、页满，换发原因为对应内容。若提及其他换发原因，换发原因默认为其他，并在其他换发原因中传入员工的描述信息。第三阶段根据第二阶段信息进行不同信息的确认：若员工出国境，需确认飞机航班信息，包括飞机去程起飞时间（具体到年月日时分）、途径或中转国家或地区（台湾或香港）、飞机回程落地时间（具体到年月日时分）。若员工无法明确航班信息，则飞机航班信息默认为空。若员工出国境，需询问是否签注/是否签证；若员工不出国境、证照用途为考试，需确认证照使用开始日期和证照使用结束日期，出行目的地默认为空，是否签注/是否签证默认为否；若员工不出国境，证照用途为办理签证/签注，需确认证照使用开始日期、证照使用结束日期、出行目的地（签证地），是否签注/是否签证默认为是；若员工申领类型为换发，需询问是否立即使用。若换发原因为其他，且无具体换发原因说明，需询问其他换发原因。第四阶段根据第三阶段信息进行信息确认：出国境情况下，证照使用开始日期指离国(境)日期、证照使用结束日期指回国(境)日期，均指出入境日期，而非飞机起飞或降落日期。若员工出国境并提供明确飞机航班信息，证照使用开始日期、证照使用结束日期按飞机航班情况处理：若是凌晨00:00至2:00起飞或出发的航班，证照使用开始日期为起飞日期的前一天，其他情况证照使用开始日期取飞机起飞日期；若是晚上22:00至24:00回国或落地抵达的航班，需考虑航班延误或延迟办理入境的情况，证照使用结束日期为落地日期的后一天，其他情况证照使用结束日期取飞机回程落地日期。若航班信息未定，才可根据上文信息处理：证照使用开始日期取相对早的日期，证照使用结束日期取相对晚的日期。对于出行目的地，只要描述到国家或地区（香港和澳门）维度，要包含所有中转或途径的国家和地区。可以按照如下逻辑判断，若有明确的航班信息，按照航班信息处理；若航班信息未定，才可通过上文分析。若办理港澳通行证，出行目的地为提及的香港或澳门。若办理是台湾通行证，目的地默认为台湾。若办理因私护照，出行目的地为提及的国家以及航班信息中涉及的国家。若没有相关信息，则进行询问。第五阶段需确认涉密人员类别、涉密等级。调用“查询员工本人因私证照信息的工具”查询该员工是否需要填写涉密信息，若是则需先选择涉密人员类别；若否则均为空。若涉密人员类别为涉密人员或脱密期人员，还需选择涉密等级；涉密人员类别为非涉密人员时涉密等级为空",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "listPPot": {
+                    "description": "提供本次因私证照申领涉及到的所有证照信息集合，证照包含：因私护照、港澳通行证、台湾通行证。每次可申请多种证件，每类证件每个用户只有一本",
+                    "type": "array"
+                },
+                "empLabelFlag": {
+                    "description": "传入涉密人员类型的枚举值。类型与枚举值的对应关系：是涉密人员（枚举值为1）、脱密期人员（枚举值为2）、否（枚举值为3）",
+                    "type": "string"
+                },
+                "empLblDegCd": {
+                    "description": "传入涉密等级的枚举值。具体类别与枚举值的对应关系：核心的枚举值为1、重要的枚举值为2、一般的枚举值为3。如果涉密人员类别为否，该字段可以不传",
+                    "type": "string"
+                },
+                "submit": {
+                    "description": "传入申请流程标志的枚举值。提交的枚举值为Y、暂存的枚举值为N。若员工没有特殊说明，默认为N",
+                    "type": "string"
+                }
+            },
+            "required": ["listPPot", "empLabelFlag", "submit"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "isSkipPage": {
+                    "description": "",
+                    "type": "boolean"
+                },
+                "skipPageParams": {
+                    "description": "",
+                    "type": "object"
+                }
+            }
+        }
+    },
+    {
+        "name": "query_employee_private_passport_info",
+        "description": "查询员工本人因私证照信息的工具。查询当前因私证照申请人的相关因私证件信息，如该人员是否备案人员、是否需要填写涉密信息、所属单位是否自动生成函信息、因私护照证件信息、港澳通行证证件信息、台湾通行证信息证件信息等",
+        "parameters": {},
+        "results": {}
+    },
+    {
+        "name": "calculator_plugin",
+        "description": "计算器工具，适用于需要大量计算的场景、减少大模型资源的使用",
+        "parameters": {},
+        "results": {}
+    },
+    {
+        "name": "query_private_leave",
+        "description": "因私请假管理查询功能，在选择申请状态、请假类型、起始时间等条件查询因私请假数据时使用此工具。例如：请帮我查询我在2025-01-01到2025-06-06之间申请状态是审批通过，请假类型是年休假的因私请假数据",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "autstate": {
+                    "description": "申请状态",
+                    "type": "string"
+                },
+                "leavetype": {
+                    "description": "请假类型",
+                    "type": "string"
+                },
+                "startdate": {
+                    "description": "开始日期，格式为 yyyy-MM-dd",
+                    "type": "string"
+                },
+                "enddate": {
+                    "description": "结束日期，格式为 yyyy-MM-dd",
+                    "type": "string"
+                }
+            },
+            "required": ["autstate", "leavetype", "startdate", "enddate"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "PK_LEAVEAPP": {
+                    "description": "请假单主键",
+                    "type": "string"
+                },
+                "TSTIME": {
+                    "description": "时间",
+                    "type": "string"
+                },
+                "UNIT": {
+                    "description": "时间单位",
+                    "type": "string"
+                },
+                "STARTDATE": {
+                    "description": "开始日期",
+                    "type": "string"
+                },
+                "IS_PASS_FRONTIER": {
+                    "description": "是否出入国境",
+                    "type": "string"
+                },
+                "STARTDATE_APM": {
+                    "description": "开始日期上下午",
+                    "type": "string"
+                },
+                "FILE_ID": {
+                    "description": "附件ID",
+                    "type": "string"
+                },
+                "PK_FSTDEPT": {
+                    "description": "一级部门主键",
+                    "type": "string"
+                },
+                "EMPNAME": {
+                    "description": "员工姓名",
+                    "type": "string"
+                },
+                "FILE_NAME": {
+                    "description": "文件名称",
+                    "type": "string"
+                },
+                "ENDDATE_APM": {
+                    "description": "结束日期上下午",
+                    "type": "string"
+                },
+                "EMPCODE": {
+                    "description": "员工号",
+                    "type": "string"
+                },
+                "ENDDATE": {
+                    "description": "结束日期",
+                    "type": "string"
+                },
+                "LEAVETIME": {
+                    "description": "请假时长",
+                    "type": "string"
+                },
+                "FST_DEPT_NAME": {
+                    "description": "一级部门名称",
+                    "type": "string"
+                },
+                "ROWNO": {
+                    "description": "数据行号",
+                    "type": "string"
+                },
+                "PK_EMP": {
+                    "description": "人员主键",
+                    "type": "string"
+                },
+                "ADDRESS": {
+                    "description": "请假地址",
+                    "type": "string"
+                },
+                "LEAVETYPE": {
+                    "description": "请假类型",
+                    "type": "string"
+                },
+                "ID": {
+                    "description": "自增主键",
+                    "type": "string"
+                },
+                "AUTSTATE": {
+                    "description": "申请状态",
+                    "type": "string"
+                },
+                "REASON": {
+                    "description": "请假原因",
+                    "type": "string"
+                },
+                "TS": {
+                    "description": "",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "query_adjustment_leave",
+        "description": "员工查询调休详情的工具，在查询个人全部、近五年以及其他具体年份的已使用调休时间，实际可用天数以及调休可使用的开始时间和到期时间时使用此工具。例如：请帮我查询我的近五年的调休详情。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "yeartype": {
+                    "description": "年度",
+                    "type": "string"
+                },
+                "maxEndDate": {
+                    "description": "截止日期，格式为 yyyy-MM-dd",
+                    "type": "string"
+                }
+            },
+            "required": ["yeartype", "maxEndDate"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "F_DEPT_CODE": {
+                    "description": "一级部门编号",
+                    "type": "string"
+                },
+                "FIRST_PK_DEPT": {
+                    "description": "一级部门主键",
+                    "type": "string"
+                },
+                "CURYEAR": {
+                    "description": "年份",
+                    "type": "string"
+                },
+                "NUM": {
+                    "description": "调休天数",
+                    "type": "string"
+                },
+                "END_DATE": {
+                    "description": "结束日期",
+                    "type": "string"
+                },
+                "ACT_NUM": {
+                    "description": "实际可用调休天数",
+                    "type": "string"
+                },
+                "FLAG": {
+                    "description": "调休标志",
+                    "type": "string"
+                },
+                "EMPNAME": {
+                    "description": "员工姓名",
+                    "type": "string"
+                },
+                "EMPCODE": {
+                    "description": "员工号",
+                    "type": "string"
+                },
+                "ROWNO": {
+                    "description": "行号",
+                    "type": "string"
+                },
+                "PK_EMP": {
+                    "description": "人员主键",
+                    "type": "string"
+                },
+                "BEGIN_DATE": {
+                    "description": "开始日期",
+                    "type": "string"
+                },
+                "SELECT_PK_DEPT": {
+                    "description": "部门主键",
+                    "type": "string"
+                },
+                "FIRST_DEPT_NAME": {
+                    "description": "一级部门名称",
+                    "type": "string"
+                },
+                "USED": {
+                    "description": "已使用调休时间",
+                    "type": "string"
+                },
+                "PK_EMP_ADJUST": {
+                    "description": "调休主键",
+                    "type": "string"
+                },
+                "REMARK": {
+                    "description": "调休描述信息",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "book_meeting_room",
+        "description": "用户创建或发起会议申请流程的工具，不可以用于查询会议申请流程信息，当用户需要创建或发起会议申请流程时使用本工具",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "description": "会议名称",
+                    "type": "string"
+                },
+                "meetType": {
+                    "description": "会议类型",
+                    "type": "string"
+                },
+                "isMultiday": {
+                    "description": "会议是否跨天",
+                    "type": "string"
+                },
+                "roomName": {
+                    "description": "会议室名称",
+                    "type": "string"
+                },
+                "duration": {
+                    "description": "会议时长。0.5的整数倍。",
+                    "type": "string"
+                },
+                "startTime": {
+                    "description": "开始时间。格式yyyy-MM-dd HH:mm:ss",
+                    "type": "string"
+                }
+            },
+            "required": ["title", "meetType", "isMultiday", "roomName", "duration", "startTime"]
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "bizId": {
+                    "description": "业务主键",
+                    "type": "number"
+                },
+                "applyNo": {
+                    "description": "流程编号",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "name": "annual_leave_query",
+        "description": "员工查询年休假详细信息的工具，在查询近五年年休假数据或者查询具体年份时使用此工具，因此可以根据年份数字进行询问或者输入近五年字样进行询问。例如：请帮我查询近五年的年休假详情",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "curyear": {
+                    "description": "年度",
+                    "type": "string"
+                }
+            },
+            "required": ["curyear"]
+        },
+        "results": {}
+    }
+]

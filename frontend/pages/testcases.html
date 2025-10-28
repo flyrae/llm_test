@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试用例 - LLM Test Tool</title>
+    <script src="/assets/vendor/vue/vue.global.js"></script>
+    <script src="/assets/vendor/tailwind/tailwind.js"></script>
+    <link rel="stylesheet" href="/assets/vendor/fontawesome/all.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body class="bg-gray-50">
+    <div id="app" v-cloak>
+        <!-- 导航栏 -->
+        <nav class="bg-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-robot text-2xl text-blue-600"></i>
+                        <span class="text-xl font-bold text-gray-800">LLM Test Tool</span>
+                    </div>
+                    <div class="flex space-x-4">
+                        <a href="/" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-home mr-2"></i>首页
+                        </a>
+                        <a href="/pages/models.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2"></i>模型配置
+                        </a>
+                        <a href="/pages/testcases.html" class="px-4 py-2 rounded-md bg-blue-100 text-blue-700">
+                            <i class="fas fa-tasks mr-2"></i>测试用例
+                        </a>
+                        <a href="/pages/tools.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-wrench mr-2"></i>工具管理
+                        </a>
+                        <a href="/pages/system_prompts.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-comment-dots mr-2"></i>系统提示词
+                        </a>
+                        <a href="/pages/debug.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-bug mr-2"></i>调试
+                        </a>
+                        <a href="/pages/compare.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-code-compare mr-2"></i>对比测试
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <div class="mb-6 flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-800">
+                    <i class="fas fa-tasks mr-2 text-green-600"></i>测试用例
+                </h1>
+                <div class="flex space-x-3">
+                    <button @click="showImportModal = true" 
+                            class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                        <i class="fas fa-file-import mr-2"></i>批量导入
+                    </button>
+                    <button @click="showModal = true" 
+                            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>添加用例
+                    </button>
+                </div>
+            </div>
+
+            <!-- 筛选和搜索 -->
+            <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input v-model="searchQuery" 
+                           placeholder="搜索标题或提示词..."
+                           class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <select v-model="filterCategory" 
+                            class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">全部分类</option>
+                        <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                    </select>
+                    <input v-model="filterTags" 
+                           placeholder="按标签筛选..."
+                           class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <!-- 测试用例列表 -->
+            <div v-if="loading" class="text-center py-12">
+                <div class="loading mx-auto"></div>
+                <p class="mt-4 text-gray-600">加载中...</p>
+            </div>
+
+            <div v-else-if="filteredTestCases.length === 0" class="bg-white rounded-lg shadow-md p-12 text-center">
+                <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
+                <p class="text-xl text-gray-600 mb-4">{{ searchQuery || filterCategory || filterTags ? '没有找到匹配的测试用例' : '还没有创建任何测试用例' }}</p>
+                <button @click="showModal = true" class="bg-blue-600 text-white px-6 py-2 rounded-lg">
+                    创建第一个测试用例
+                </button>
+            </div>
+
+            <div v-else class="space-y-4">
+                <div v-for="testCase in filteredTestCases" :key="testCase.id" 
+                     class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">{{ testCase.title }}</h3>
+                            <div class="flex items-center space-x-3 text-sm">
+                                <span v-if="testCase.category" 
+                                      class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                    {{ testCase.category }}
+                                </span>
+                                <span class="text-gray-500">
+                                    <i class="far fa-clock mr-1"></i>
+                                    {{ formatDate(testCase.created_at) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button @click="editTestCase(testCase)" 
+                                    class="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button @click="deleteTestCase(testCase.id)" 
+                                    class="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="text-sm font-semibold text-gray-700 mb-2">提示词:</div>
+                        <div class="bg-gray-50 rounded p-3 text-gray-700">
+                            {{ testCase.prompt.substring(0, 200) }}{{ testCase.prompt.length > 200 ? '...' : '' }}
+                        </div>
+                    </div>
+
+                    <div v-if="testCase.system_prompt" class="mb-4">
+                        <div class="text-sm font-semibold text-gray-700 mb-2">系统提示词:</div>
+                        <div class="bg-gray-50 rounded p-3 text-gray-700 text-sm">
+                            {{ testCase.system_prompt.substring(0, 150) }}{{ testCase.system_prompt.length > 150 ? '...' : '' }}
+                        </div>
+                    </div>
+
+                    <div v-if="testCase.tags" class="flex flex-wrap gap-2 mb-4">
+                        <span v-for="tag in testCase.tags.split(',')" :key="tag"
+                              class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                            <i class="fas fa-tag mr-1"></i>{{ tag.trim() }}
+                        </span>
+                    </div>
+
+                    <!-- Display conversation history if present -->
+                    <div v-if="testCase.conversation_history && testCase.conversation_history.length > 0" 
+                         class="mt-4 border-t pt-4">
+                        <div class="text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-comments text-blue-600 mr-1"></i>对话历史 ({{ testCase.conversation_history.length }} 轮):
+                        </div>
+                        <div class="space-y-2">
+                            <div v-for="(message, idx) in testCase.conversation_history" :key="idx"
+                                 class="rounded p-2 text-sm"
+                                 :class="message.role === 'user' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'">
+                                <span class="font-semibold" :class="message.role === 'user' ? 'text-blue-700' : 'text-green-700'">
+                                    {{ message.role === 'user' ? '👤 用户' : '🤖 助手' }}:
+                                </span>
+                                <span class="text-gray-700 ml-2">
+                                    {{ message.content.substring(0, 100) }}{{ message.content.length > 100 ? '...' : '' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Display expected tool calls if present -->
+                    <div v-if="testCase.expected_tool_calls && testCase.expected_tool_calls.length > 0" 
+                         class="mt-4 border-t pt-4">
+                        <div class="text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-check-circle text-green-600 mr-1"></i>期望的工具调用:
+                        </div>
+                        <div class="space-y-2">
+                            <div v-for="(call, idx) in testCase.expected_tool_calls" :key="idx"
+                                 class="bg-green-50 border border-green-200 rounded p-3 text-sm">
+                                <div class="font-semibold text-green-800 mb-1">
+                                    <i class="fas fa-wrench mr-1"></i>
+                                    <span class="font-mono">{{ call.function ? call.function.name : call.name }}</span>
+                                </div>
+                                <div class="text-xs text-gray-600 font-mono bg-white rounded p-2 overflow-x-auto">
+                                    {{ formatToolCallArguments(call) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 添加/编辑用例弹窗 -->
+            <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-screen overflow-y-auto m-4">
+                    <div class="p-6 border-b">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            {{ editingTestCase ? '编辑测试用例' : '添加测试用例' }}
+                        </h2>
+                    </div>
+                    
+                    <form @submit.prevent="saveTestCase" class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">标题 *</label>
+                            <input v-model="formData.title" required
+                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">分类</label>
+                                <input v-model="formData.category" list="categories"
+                                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <datalist id="categories">
+                                    <option v-for="cat in categories" :key="cat" :value="cat">
+                                </datalist>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">标签</label>
+                                <input v-model="formData.tags" placeholder="用逗号分隔"
+                                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">系统提示词</label>
+                            <textarea v-model="formData.system_prompt" rows="3"
+                                      placeholder="可选，设置模型的角色和行为..."
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+
+                        <!-- 多轮对话历史 -->
+                        <div class="border-t pt-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-700">
+                                    <i class="fas fa-comments mr-1"></i>多轮对话历史 (可选)
+                                </label>
+                                <button type="button"
+                                        @click="showConversationHistory = !showConversationHistory"
+                                        class="text-sm text-blue-600 hover:text-blue-800">
+                                    <i class="fas" :class="showConversationHistory ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                    {{ showConversationHistory ? '收起' : '展开' }}
+                                </button>
+                            </div>
+                            
+                            <div v-show="showConversationHistory" class="space-y-3 mt-3">
+                                <p class="text-xs text-gray-600 mb-3">
+                                    <i class="fas fa-info-circle mr-1"></i>用于测试多轮对话场景，添加历史对话后，"用户提示词"将作为最后一轮的用户输入
+                                </p>
+                                
+                                <!-- 对话历史列表 -->
+                                <div v-if="formData.conversation_history && formData.conversation_history.length > 0" 
+                                     class="space-y-2">
+                                    <div v-for="(message, index) in formData.conversation_history" :key="index"
+                                         class="border rounded-lg p-3"
+                                         :class="message.role === 'user' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'">
+                                        <div class="flex items-start space-x-3">
+                                            <div class="flex-1 space-y-2">
+                                                <div class="flex items-center space-x-2">
+                                                    <select v-model="message.role" 
+                                                            class="px-3 py-1.5 border rounded text-sm font-medium"
+                                                            :class="message.role === 'user' ? 'text-blue-700 bg-blue-100' : 'text-green-700 bg-green-100'">
+                                                        <option value="user">👤 用户</option>
+                                                        <option value="assistant">🤖 助手</option>
+                                                    </select>
+                                                    <span class="text-xs text-gray-500">第 {{ index + 1 }} 轮</span>
+                                                </div>
+                                                <textarea v-model="message.content"
+                                                          rows="3"
+                                                          class="w-full px-3 py-2 border rounded text-sm"
+                                                          :placeholder="message.role === 'user' ? '输入用户消息...' : '输入助手回复...'"></textarea>
+                                            </div>
+                                            <div class="flex flex-col space-y-2">
+                                                <button type="button"
+                                                        @click="moveConversationMessage(index, -1)"
+                                                        :disabled="index === 0"
+                                                        class="text-gray-600 hover:text-gray-800 disabled:opacity-30"
+                                                        title="上移">
+                                                    <i class="fas fa-arrow-up"></i>
+                                                </button>
+                                                <button type="button"
+                                                        @click="moveConversationMessage(index, 1)"
+                                                        :disabled="index === formData.conversation_history.length - 1"
+                                                        class="text-gray-600 hover:text-gray-800 disabled:opacity-30"
+                                                        title="下移">
+                                                    <i class="fas fa-arrow-down"></i>
+                                                </button>
+                                                <button type="button"
+                                                        @click="removeConversationMessage(index)"
+                                                        class="text-red-600 hover:text-red-800"
+                                                        title="删除">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div v-else class="text-center py-4 text-gray-500 text-sm">
+                                    暂无对话历史，点击下方按钮添加
+                                </div>
+                                
+                                <!-- 添加消息按钮 -->
+                                <div class="flex space-x-2">
+                                    <button type="button"
+                                            @click="addConversationMessage('user')"
+                                            class="flex-1 border-2 border-dashed border-blue-300 rounded-lg py-2 text-sm text-blue-600 hover:border-blue-500 hover:bg-blue-50">
+                                        <i class="fas fa-user mr-1"></i>添加用户消息
+                                    </button>
+                                    <button type="button"
+                                            @click="addConversationMessage('assistant')"
+                                            class="flex-1 border-2 border-dashed border-green-300 rounded-lg py-2 text-sm text-green-600 hover:border-green-500 hover:bg-green-50">
+                                        <i class="fas fa-robot mr-1"></i>添加助手消息
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">用户提示词 *</label>
+                            <textarea v-model="formData.prompt" required rows="6"
+                                      placeholder="输入测试的提示词内容..."
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">期望输出</label>
+                            <textarea v-model="formData.expected_output" rows="4"
+                                      placeholder="可选，期望的模型输出..."
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+
+                        <!-- 工具选择 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-wrench mr-1"></i>关联工具 (可选)
+                            </label>
+                            <div class="border rounded-lg p-4 max-h-48 overflow-y-auto">
+                                <div v-if="availableTools.length === 0" class="text-gray-500 text-sm text-center py-2">
+                                    暂无可用工具，<a href="/pages/tools.html" class="text-blue-600 hover:underline">前往创建</a>
+                                </div>
+                                <label v-for="tool in availableTools" :key="tool.id"
+                                       class="flex items-start p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                    <input type="checkbox" :value="tool.id" v-model="formData.tools" class="mt-1 mr-3">
+                                    <div class="flex-1">
+                                        <div class="font-semibold text-sm">{{ tool.name }}</div>
+                                        <div class="text-xs text-gray-500">{{ tool.description }}</div>
+                                    </div>
+                                </label>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">选择此测试用例可以使用的工具（测试Function Calling能力）</p>
+                        </div>
+
+                        <!-- Expected Tool Calls Section -->
+                        <div v-if="formData.tools && formData.tools.length > 0" class="border-t pt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-check-circle mr-1"></i>期望的工具调用 (可选)
+                            </label>
+                            <div class="space-y-3">
+                                <div v-for="(expectedCall, index) in formData.expected_tool_calls" :key="index"
+                                     class="border rounded-lg p-3 bg-gray-50">
+                                    <div class="flex items-start space-x-3">
+                                        <div class="flex-1 space-y-2">
+                                            <div>
+                                                <label class="text-xs text-gray-600 mb-1 block">工具名称</label>
+                                                <select v-model="expectedCall.name" 
+                                                        class="w-full px-3 py-1.5 border rounded text-sm"
+                                                        required>
+                                                    <option value="">选择工具</option>
+                                                    <option v-for="tool in getSelectedTools()" :key="tool.id" :value="tool.name">
+                                                        {{ tool.name }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="text-xs text-gray-600 mb-1 block">参数 (JSON格式)</label>
+                                                <textarea v-model="expectedCall.arguments"
+                                                          rows="3"
+                                                          class="w-full px-3 py-2 border rounded text-sm font-mono"
+                                                          placeholder='{"location": "上海", "unit": "celsius"}'></textarea>
+                                                <p class="text-xs text-gray-500 mt-1">
+                                                    提示: 输入期望的参数，格式为JSON对象
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button type="button"
+                                                @click="removeExpectedToolCall(index)"
+                                                class="text-red-600 hover:text-red-800 mt-6">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <button type="button"
+                                        @click="addExpectedToolCall"
+                                        class="w-full border-2 border-dashed border-gray-300 rounded-lg py-2 text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600">
+                                    <i class="fas fa-plus mr-1"></i>添加期望的工具调用
+                                </button>
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500">
+                                <i class="fas fa-info-circle mr-1"></i>设置期望的工具调用后，系统会自动评估模型的工具调用是否匹配（名称、参数等）
+                            </p>
+                        </div>
+
+                        <!-- Evaluation Weights Configuration -->
+                        <div class="border-t pt-4">
+                            <div class="flex items-center justify-between mb-2 cursor-pointer" @click="showWeightsConfig = !showWeightsConfig">
+                                <label class="text-sm font-medium text-gray-700">
+                                    <i class="fas fa-sliders-h mr-1"></i>评分权重配置 (高级)
+                                </label>
+                                <i class="fas" :class="showWeightsConfig ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                            </div>
+                            
+                            <div v-show="showWeightsConfig" class="space-y-3 mt-3 p-4 bg-gray-50 rounded-lg">
+                                <p class="text-xs text-gray-600 mb-3">
+                                    <i class="fas fa-info-circle mr-1"></i>自定义各评分维度的权重，总和必须为 100%
+                                </p>
+                                
+                                <!-- Tool Calls Weight -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="text-xs font-medium text-gray-700">
+                                            🔧 工具调用权重
+                                        </label>
+                                        <span class="text-xs font-semibold text-blue-600">{{ formData.evaluation_weights.tool_calls }}%</span>
+                                    </div>
+                                    <input type="range" min="0" max="100" step="5"
+                                           v-model.number="formData.evaluation_weights.tool_calls"
+                                           @input="adjustWeights('tool_calls')"
+                                           class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+                                
+                                <!-- Text Similarity Weight -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="text-xs font-medium text-gray-700">
+                                            📝 文本相似度权重
+                                        </label>
+                                        <span class="text-xs font-semibold text-purple-600">{{ formData.evaluation_weights.text_similarity }}%</span>
+                                    </div>
+                                    <input type="range" min="0" max="100" step="5"
+                                           v-model.number="formData.evaluation_weights.text_similarity"
+                                           @input="adjustWeights('text_similarity')"
+                                           class="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+                                
+                                <!-- Custom Criteria Weight -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="text-xs font-medium text-gray-700">
+                                            ✅ 自定义标准权重
+                                        </label>
+                                        <span class="text-xs font-semibold text-teal-600">{{ formData.evaluation_weights.custom_criteria }}%</span>
+                                    </div>
+                                    <input type="range" min="0" max="100" step="5"
+                                           v-model.number="formData.evaluation_weights.custom_criteria"
+                                           @input="adjustWeights('custom_criteria')"
+                                           class="w-full h-2 bg-teal-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+                                
+                                <!-- Weight Sum Display -->
+                                <div class="border-t pt-2 mt-2">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="font-medium">总计:</span>
+                                        <span class="font-bold" :class="weightsSum === 100 ? 'text-green-600' : 'text-red-600'">
+                                            {{ weightsSum }}%
+                                            <i v-if="weightsSum === 100" class="fas fa-check-circle ml-1"></i>
+                                            <i v-else class="fas fa-exclamation-triangle ml-1"></i>
+                                        </span>
+                                    </div>
+                                    <p v-if="weightsSum !== 100" class="text-xs text-red-600 mt-1">
+                                        ⚠️ 权重总和必须为 100%
+                                    </p>
+                                </div>
+                                
+                                <!-- Reset Button -->
+                                <button type="button"
+                                        @click="resetWeights"
+                                        class="text-xs text-blue-600 hover:text-blue-800 underline">
+                                    <i class="fas fa-undo mr-1"></i>恢复默认权重
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-4 pt-4">
+                            <button type="submit" 
+                                    class="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                                {{ editingTestCase ? '更新' : '添加' }}
+                            </button>
+                            <button type="button" @click="closeModal" 
+                                    class="flex-1 bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300">
+                                取消
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 导入弹窗 -->
+            <div v-if="showImportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl m-4">
+                    <div class="p-6 border-b">
+                        <h2 class="text-2xl font-bold text-gray-800">批量导入测试用例</h2>
+                    </div>
+                    
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">选择文件格式</label>
+                            <div class="flex space-x-4">
+                                <label class="flex items-center">
+                                    <input type="radio" v-model="importFormat" value="json" class="mr-2">
+                                    JSON格式
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" v-model="importFormat" value="csv" class="mr-2">
+                                    CSV格式
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">上传文件</label>
+                            <input type="file" @change="handleFileUpload" 
+                                   :accept="importFormat === 'json' ? '.json' : '.csv'"
+                                   class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+
+                        <div class="bg-blue-50 border border-blue-200 rounded p-4 text-sm">
+                            <div class="font-semibold mb-2">格式说明:</div>
+                            <div v-if="importFormat === 'json'">
+                                <pre class="bg-white p-2 rounded text-xs overflow-x-auto">{
+  "test_cases": [
+    {
+      "title": "测试标题",
+      "category": "分类",
+      "prompt": "提示词内容",
+      "system_prompt": "系统提示词",
+      "tags": "tag1,tag2"
+    }
+  ]
+}</pre>
+                            </div>
+                            <div v-else>
+                                CSV格式需包含列: title, category, prompt, system_prompt, tags
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-4 pt-4">
+                            <button @click="importTestCases" :disabled="!importFile"
+                                    class="flex-1 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50">
+                                <i class="fas fa-upload mr-2"></i>导入
+                            </button>
+                            <button @click="closeImportModal" 
+                                    class="flex-1 bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300">
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/assets/js/utils/api.js"></script>
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    testCases: [],
+                    availableTools: [],  // 可用工具列表
+                    loading: false,
+                    showModal: false,
+                    showImportModal: false,
+                    showWeightsConfig: false,  // 显示权重配置
+                    showConversationHistory: false,  // 显示对话历史
+                    editingTestCase: null,
+                    searchQuery: '',
+                    filterCategory: '',
+                    filterTags: '',
+                    importFormat: 'json',
+                    importFile: null,
+                    formData: this.getEmptyForm()
+                }
+            },
+            computed: {
+                categories() {
+                    return [...new Set(this.testCases.map(tc => tc.category).filter(Boolean))];
+                },
+                filteredTestCases() {
+                    return this.testCases.filter(tc => {
+                        const matchSearch = !this.searchQuery || 
+                            tc.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                            tc.prompt.toLowerCase().includes(this.searchQuery.toLowerCase());
+                        const matchCategory = !this.filterCategory || tc.category === this.filterCategory;
+                        const matchTags = !this.filterTags || 
+                            (tc.tags && tc.tags.toLowerCase().includes(this.filterTags.toLowerCase()));
+                        return matchSearch && matchCategory && matchTags;
+                    });
+                },
+                weightsSum() {
+                    const weights = this.formData.evaluation_weights;
+                    return weights.tool_calls + weights.text_similarity + weights.custom_criteria;
+                }
+            },
+            async mounted() {
+                await this.loadTestCases();
+                await this.loadTools();
+            },
+            methods: {
+                async loadTools() {
+                    try {
+                        this.availableTools = await api.get('/api/tools/');
+                    } catch (error) {
+                        console.error('加载工具列表失败:', error);
+                    }
+                },
+                async loadTestCases() {
+                    this.loading = true;
+                    try {
+                        this.testCases = await api.get('/api/testcases');
+                    } catch (error) {
+                        alert('加载测试用例失败: ' + error.message);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                getEmptyForm() {
+                    return {
+                        title: '',
+                        category: '',
+                        prompt: '',
+                        system_prompt: '',
+                        expected_output: '',
+                        tools: [],  // 关联的工具ID列表
+                        expected_tool_calls: [],  // 期望的工具调用
+                        conversation_history: [],  // 多轮对话历史
+                        evaluation_weights: {  // 评分权重配置
+                            tool_calls: 70,
+                            text_similarity: 20,
+                            custom_criteria: 10
+                        },
+                        tags: '',
+                        meta_data: {}
+                    };
+                },
+                editTestCase(testCase) {
+                    this.editingTestCase = testCase;
+                    // Convert expected_tool_calls arguments to JSON strings for editing
+                    // 支持两种格式：OpenAI格式和简化格式
+                    const expected_tool_calls = (testCase.expected_tool_calls || []).map(call => {
+                        let name, args;
+                        
+                        if (call.function) {
+                            // OpenAI格式: {function: {name, arguments}}
+                            name = call.function.name;
+                            args = call.function.arguments;
+                        } else {
+                            // 简化格式: {name, arguments}
+                            name = call.name;
+                            args = call.arguments;
+                        }
+                        
+                        // 如果arguments是字符串，先解析再格式化
+                        if (typeof args === 'string') {
+                            try {
+                                args = JSON.parse(args);
+                            } catch (e) {
+                                // 如果解析失败，保持原样
+                            }
+                        }
+                        
+                        return {
+                            name: name,
+                            arguments: typeof args === 'object' 
+                                ? JSON.stringify(args, null, 2) 
+                                : args
+                        };
+                    });
+                    
+                    // 读取评分权重配置，如果不存在则使用默认值
+                    const evaluation_weights = testCase.evaluation_weights || {
+                        tool_calls: 70,
+                        text_similarity: 20,
+                        custom_criteria: 10
+                    };
+                    
+                    // 读取对话历史，如果不存在则使用空数组
+                    const conversation_history = testCase.conversation_history || [];
+                    
+                    this.formData = { 
+                        ...testCase,
+                        tools: testCase.tools || [],  // 确保tools是数组
+                        expected_tool_calls: expected_tool_calls,  // 使用转换后的期望工具调用
+                        evaluation_weights: evaluation_weights,  // 设置评分权重
+                        conversation_history: conversation_history  // 设置对话历史
+                    };
+                    
+                    // 如果有对话历史，自动展开
+                    this.showConversationHistory = conversation_history.length > 0;
+                    
+                    this.showModal = true;
+                },
+                async saveTestCase() {
+                    try {
+                        // Parse and validate expected_tool_calls arguments
+                        const processedData = { ...this.formData };
+                        if (processedData.expected_tool_calls && processedData.expected_tool_calls.length > 0) {
+                            processedData.expected_tool_calls = processedData.expected_tool_calls.map(call => {
+                                try {
+                                    // Parse arguments if it's a string
+                                    const args = typeof call.arguments === 'string' 
+                                        ? JSON.parse(call.arguments) 
+                                        : call.arguments;
+                                    
+                                    // 保持 OpenAI 格式，但简化为不需要 id（服务端不关心id）
+                                    return {
+                                        type: 'function',
+                                        function: {
+                                            name: call.name,
+                                            arguments: typeof args === 'object' ? JSON.stringify(args) : args
+                                        }
+                                    };
+                                } catch (e) {
+                                    alert(`工具调用 "${call.name}" 的参数格式不正确，请使用有效的JSON格式`);
+                                    throw new Error('Invalid JSON in arguments');
+                                }
+                            });
+                        }
+                        
+                        if (this.editingTestCase) {
+                            await api.put(`/api/testcases/${this.editingTestCase.id}`, processedData);
+                        } else {
+                            await api.post('/api/testcases', processedData);
+                        }
+                        await this.loadTestCases();
+                        this.closeModal();
+                        alert('保存成功！');
+                    } catch (error) {
+                        alert('保存失败: ' + error.message);
+                    }
+                },
+                async deleteTestCase(id) {
+                    if (!confirm('确定要删除这个测试用例吗？')) return;
+                    
+                    try {
+                        await api.delete(`/api/testcases/${id}`);
+                        await this.loadTestCases();
+                        alert('删除成功！');
+                    } catch (error) {
+                        alert('删除失败: ' + error.message);
+                    }
+                },
+                closeModal() {
+                    this.showModal = false;
+                    this.editingTestCase = null;
+                    this.formData = this.getEmptyForm();
+                },
+                // Expected tool calls methods
+                addExpectedToolCall() {
+                    this.formData.expected_tool_calls.push({
+                        name: '',
+                        arguments: '{}'
+                    });
+                },
+                removeExpectedToolCall(index) {
+                    this.formData.expected_tool_calls.splice(index, 1);
+                },
+                // 多轮对话历史管理
+                addConversationMessage(role) {
+                    if (!this.formData.conversation_history) {
+                        this.formData.conversation_history = [];
+                    }
+                    this.formData.conversation_history.push({
+                        role: role,
+                        content: ''
+                    });
+                },
+                removeConversationMessage(index) {
+                    this.formData.conversation_history.splice(index, 1);
+                },
+                moveConversationMessage(index, direction) {
+                    const newIndex = index + direction;
+                    if (newIndex < 0 || newIndex >= this.formData.conversation_history.length) {
+                        return;
+                    }
+                    const temp = this.formData.conversation_history[index];
+                    this.formData.conversation_history[index] = this.formData.conversation_history[newIndex];
+                    this.formData.conversation_history[newIndex] = temp;
+                    // 触发Vue的响应式更新
+                    this.formData.conversation_history = [...this.formData.conversation_history];
+                },
+                adjustWeights(changedField) {
+                    // 当用户调整某个权重时，自动调整其他权重以确保总和为100
+                    const weights = this.formData.evaluation_weights;
+                    const currentSum = weights.tool_calls + weights.text_similarity + weights.custom_criteria;
+                    
+                    if (currentSum > 100) {
+                        // 如果总和超过100，按比例减少其他两个权重
+                        const fields = ['tool_calls', 'text_similarity', 'custom_criteria'].filter(f => f !== changedField);
+                        const otherSum = fields.reduce((sum, f) => sum + weights[f], 0);
+                        const remaining = 100 - weights[changedField];
+                        
+                        if (otherSum > 0) {
+                            fields.forEach(f => {
+                                weights[f] = Math.round(weights[f] * remaining / otherSum / 5) * 5; // 四舍五入到5的倍数
+                            });
+                        }
+                    }
+                },
+                resetWeights() {
+                    this.formData.evaluation_weights = {
+                        tool_calls: 70,
+                        text_similarity: 20,
+                        custom_criteria: 10
+                    };
+                },
+                getSelectedTools() {
+                    // Get the actual tool objects for selected tool IDs
+                    return this.availableTools.filter(tool => 
+                        this.formData.tools.includes(tool.id)
+                    );
+                },
+                closeImportModal() {
+                    this.showImportModal = false;
+                    this.importFile = null;
+                },
+                handleFileUpload(event) {
+                    this.importFile = event.target.files[0];
+                },
+                async importTestCases() {
+                    if (!this.importFile) return;
+
+                    try {
+                        let result;
+                        if (this.importFormat === 'csv') {
+                            result = await api.upload('/api/testcases/import/csv', this.importFile);
+                        } else {
+                            const text = await this.importFile.text();
+                            const data = JSON.parse(text);
+                            result = await api.post('/api/testcases/import', data);
+                        }
+                        
+                        await this.loadTestCases();
+                        this.closeImportModal();
+                        alert(`导入成功！共导入 ${result.count} 个测试用例`);
+                    } catch (error) {
+                        alert('导入失败: ' + error.message);
+                    }
+                },
+                formatDate(dateString) {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('zh-CN');
+                },
+                formatToolCallArguments(call) {
+                    // 支持两种格式：
+                    // 1. OpenAI格式: {function: {name, arguments}}
+                    // 2. 简化格式: {name, arguments}
+                    try {
+                        let args;
+                        if (call.function && call.function.arguments) {
+                            // OpenAI格式
+                            args = call.function.arguments;
+                        } else if (call.arguments) {
+                            // 简化格式
+                            args = call.arguments;
+                        } else {
+                            return '{}';
+                        }
+                        
+                        // 如果是字符串，尝试解析
+                        if (typeof args === 'string') {
+                            try {
+                                args = JSON.parse(args);
+                            } catch (e) {
+                                return args;
+                            }
+                        }
+                        
+                        // 格式化为易读的JSON
+                        return JSON.stringify(args, null, 2);
+                    } catch (e) {
+                        return String(call.arguments || call.function?.arguments || '{}');
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

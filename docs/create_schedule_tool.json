@@ -1,0 +1,31 @@
+[
+    {
+        "name": "create_schedule",
+        "description": "增加、新建个人日程安排的工具，在需要增加、创建、新建新的个人日程时使用本工具；同时会查出新日程开始时间当天的全部日程",
+        "category": "schedule",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "startTime": {
+                    "type": "string",
+                    "description": "日程开始时间，格式为YYYY-MM-DD hh:mm:ss"
+                },
+                "endTime": {
+                    "type": "string",
+                    "description": "日程结束时间，格式为YYYY-MM-DD hh:mm:ss"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "日程内容"
+                }
+            },
+            "required": ["startTime", "endTime", "title"]
+        },
+        "example_call": {
+            "startTime": "2025-10-28 14:00:00",
+            "endTime": "2025-10-28 15:00:00",
+            "title": "团队会议"
+        },
+        "tags": "schedule,calendar,appointment"
+    }
+]

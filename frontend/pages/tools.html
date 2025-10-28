@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具管理 - LLM Test Tool</title>
+    <script src="/assets/vendor/vue/vue.global.js"></script>
+    <script src="/assets/vendor/tailwind/tailwind.js"></script>
+    <link rel="stylesheet" href="/assets/vendor/fontawesome/all.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <style>
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        [v-cloak] {
+            display: none;
+        }
+        /* 平滑过渡 */
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+        /* 卡片悬停效果 */
+        .hover\:scale-105:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" v-cloak>
+        <!-- 导航栏 -->
+        <nav class="bg-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-robot text-2xl text-blue-600"></i>
+                        <span class="text-xl font-bold text-gray-800">LLM Test Tool</span>
+                    </div>
+                    <div class="flex space-x-4">
+                        <a href="/" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-home mr-2"></i>首页
+                        </a>
+                        <a href="/pages/models.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2"></i>模型配置
+                        </a>
+                        <a href="/pages/testcases.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-tasks mr-2"></i>测试用例
+                        </a>
+                        <a href="/pages/tools.html" class="px-4 py-2 rounded-md bg-blue-100 text-blue-700">
+                            <i class="fas fa-wrench mr-2"></i>工具管理
+                        </a>
+                        <a href="/pages/system_prompts.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-comment-dots mr-2"></i>系统提示词
+                        </a>
+                        <a href="/pages/debug.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-bug mr-2"></i>调试
+                        </a>
+                        <a href="/pages/compare.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-code-compare mr-2"></i>对比测试
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">
+                    <i class="fas fa-wrench mr-2 text-purple-600"></i>工具定义管理
+                </h1>
+                <div class="flex gap-3">
+                    <button @click="showImportModal" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">
+                        <i class="fas fa-file-import mr-2"></i>批量导入
+                    </button>
+                    <button @click="showAddModal" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700">
+                        <i class="fas fa-plus mr-2"></i>添加工具
+                    </button>
+                </div>
+            </div>
+
+            <!-- 统计信息 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                            <i class="fas fa-wrench text-purple-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-500">工具总数</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ tools.length }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                            <i class="fas fa-tags text-blue-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-500">分类数量</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ categoryCount }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                            <i class="fas fa-filter text-green-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-500">筛选结果</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ filteredTools.length }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                            <i class="fas fa-eye text-yellow-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-500">当前页显示</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ paginatedTools.length }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 搜索和过滤栏 -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- 搜索框 -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-search mr-2"></i>搜索工具
+                        </label>
+                        <input v-model="searchQuery" type="text" 
+                               placeholder="搜索名称、描述或标签..."
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    
+                    <!-- 分类过滤 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-tags mr-2"></i>分类筛选
+                        </label>
+                        <select v-model="selectedCategory" 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option value="">全部分类</option>
+                            <option v-for="category in categories" :key="category" :value="category">
+                                {{ category }}
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <!-- 排序 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-sort mr-2"></i>排序方式
+                        </label>
+                        <select v-model="sortBy" 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option value="name-asc">名称 A-Z</option>
+                            <option value="name-desc">名称 Z-A</option>
+                            <option value="created-desc">最新创建</option>
+                            <option value="created-asc">最早创建</option>
+                            <option value="category-asc">分类 A-Z</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 过滤结果提示 -->
+                <div v-if="searchQuery || selectedCategory" class="mt-4 flex items-center justify-between">
+                    <p class="text-sm text-gray-600">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        找到 <strong>{{ filteredTools.length }}</strong> 个匹配的工具
+                    </p>
+                    <button @click="clearFilters" class="text-sm text-purple-600 hover:text-purple-800">
+                        <i class="fas fa-times-circle mr-1"></i>清除筛选
+                    </button>
+                </div>
+            </div>
+
+            <!-- 批量操作栏 -->
+            <div v-if="selectedTools.length > 0" class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                <div class="flex items-center justify-between">
+                    <p class="text-purple-800">
+                        <i class="fas fa-check-square mr-2"></i>
+                        已选择 <strong>{{ selectedTools.length }}</strong> 个工具
+                    </p>
+                    <div class="flex gap-3">
+                        <button @click="exportSelected" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                            <i class="fas fa-file-export mr-2"></i>导出选中
+                        </button>
+                        <button @click="deleteSelected" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                            <i class="fas fa-trash mr-2"></i>批量删除
+                        </button>
+                        <button @click="clearSelection" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                            <i class="fas fa-times mr-2"></i>取消选择
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 工具列表 -->
+            <div v-if="loading" class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-4xl text-gray-400"></i>
+                <p class="mt-4 text-gray-500">加载中...</p>
+            </div>
+
+            <div v-else>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div v-for="tool in paginatedTools" :key="tool.id" 
+                         class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                         :class="{'ring-2 ring-purple-500': selectedTools.includes(tool.id)}">
+                        <div class="p-6">
+                            <!-- 工具头部 -->
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-start flex-1">
+                                    <input type="checkbox" 
+                                           :checked="selectedTools.includes(tool.id)"
+                                           @change="toggleToolSelection(tool.id)"
+                                           class="mt-1 mr-3 h-5 w-5 text-purple-600 rounded focus:ring-purple-500">
+                                    <div class="flex-1">
+                                        <h3 class="text-xl font-bold text-gray-800 mb-2">{{ tool.name }}</h3>
+                                        <div class="flex flex-wrap gap-2 mb-2">
+                                            <span v-if="tool.category" 
+                                                  class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">
+                                                <i class="fas fa-tag mr-1"></i>{{ tool.category }}
+                                            </span>
+                                            <span v-if="tool.tags" 
+                                                  class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+                                                <i class="fas fa-tags mr-1"></i>{{ tool.tags.split(',').length }} 标签
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2 ml-2">
+                                    <button @click="editTool(tool)" 
+                                            class="text-blue-600 hover:bg-blue-50 p-2 rounded"
+                                            title="编辑">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button @click="deleteTool(tool.id)" 
+                                            class="text-red-600 hover:bg-red-50 p-2 rounded"
+                                            title="删除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 描述（可折叠） -->
+                            <div class="mb-4">
+                                <p class="text-gray-600 text-sm" 
+                                   :class="{'line-clamp-2': !tool.expanded}">
+                                    {{ tool.description }}
+                                </p>
+                                <button v-if="tool.description.length > 100" 
+                                        @click="toggleExpanded(tool)"
+                                        class="text-purple-600 text-xs mt-1 hover:underline">
+                                    {{ tool.expanded ? '收起' : '展开' }}
+                                    <i :class="tool.expanded ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas ml-1"></i>
+                                </button>
+                            </div>
+
+                            <!-- 参数信息（可折叠） -->
+                            <div class="border-t pt-3">
+                                <button @click="toggleDetails(tool)" 
+                                        class="w-full flex justify-between items-center text-left font-semibold text-gray-700 hover:text-purple-600">
+                                    <span>
+                                        <i class="fas fa-code mr-2"></i>参数定义
+                                        <span v-if="tool.parameters && tool.parameters.properties" 
+                                              class="ml-2 text-xs text-gray-500">
+                                            ({{ Object.keys(tool.parameters.properties).length }} 个)
+                                        </span>
+                                    </span>
+                                    <i :class="tool.showDetails ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-sm"></i>
+                                </button>
+                                
+                                <div v-if="tool.showDetails" class="mt-3 bg-gray-50 p-3 rounded text-sm">
+                                    <div v-if="tool.parameters && tool.parameters.properties">
+                                        <div v-for="(param, name) in tool.parameters.properties" :key="name" 
+                                             class="mb-2 last:mb-0 pb-2 last:pb-0 border-b last:border-0">
+                                            <span class="font-mono text-purple-600 font-semibold">{{ name }}</span>
+                                            <span class="text-gray-500 text-xs ml-2">({{ param.type }})</span>
+                                            <span v-if="tool.parameters.required && tool.parameters.required.includes(name)" 
+                                                  class="text-red-500 text-xs ml-1">*必需</span>
+                                            <p class="text-gray-600 text-xs mt-1">{{ param.description }}</p>
+                                        </div>
+                                    </div>
+                                    <span v-else class="text-gray-400">无参数</span>
+                                </div>
+                            </div>
+
+                            <!-- 示例调用（可折叠） -->
+                            <div v-if="tool.example_call" class="border-t pt-3 mt-3">
+                                <button @click="toggleExample(tool)"
+                                        class="w-full flex justify-between items-center text-left font-semibold text-gray-700 hover:text-purple-600">
+                                    <span>
+                                        <i class="fas fa-lightbulb mr-2"></i>示例调用
+                                    </span>
+                                    <i :class="tool.showExample ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-sm"></i>
+                                </button>
+                                <pre v-if="tool.showExample" class="mt-3 bg-gray-50 p-3 rounded text-xs overflow-x-auto">{{ JSON.stringify(tool.example_call, null, 2) }}</pre>
+                            </div>
+
+                            <!-- 底部信息 -->
+                            <div class="mt-4 pt-3 border-t flex justify-between items-center text-xs text-gray-500">
+                                <span>
+                                    <i class="far fa-clock mr-1"></i>{{ formatDate(tool.created_at) }}
+                                </span>
+                                <button @click="copyToolJson(tool)" 
+                                        class="text-purple-600 hover:text-purple-800"
+                                        title="复制JSON">
+                                    <i class="fas fa-copy mr-1"></i>复制
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 空状态 -->
+                <div v-if="filteredTools.length === 0" class="text-center py-12">
+                    <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">没有找到匹配的工具</p>
+                    <p class="text-gray-400 mt-2">尝试调整搜索条件或清除筛选</p>
+                </div>
+
+                <!-- 分页 -->
+                <div v-if="filteredTools.length > pageSize" class="mt-8 flex items-center justify-between bg-white rounded-lg shadow p-4">
+                    <div class="text-sm text-gray-600">
+                        显示 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, filteredTools.length) }} 
+                        / 共 {{ filteredTools.length }} 个工具
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button @click="currentPage = 1" 
+                                :disabled="currentPage === 1"
+                                class="px-3 py-2 rounded border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-angle-double-left"></i>
+                        </button>
+                        <button @click="currentPage--" 
+                                :disabled="currentPage === 1"
+                                class="px-3 py-2 rounded border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-angle-left"></i>
+                        </button>
+                        
+                        <span v-for="page in visiblePages" :key="page" class="mx-1">
+                            <button v-if="page !== '...'" 
+                                    @click="currentPage = page"
+                                    class="px-3 py-2 rounded border"
+                                    :class="currentPage === page ? 'bg-purple-600 text-white border-purple-600' : 'hover:bg-gray-50'">
+                                {{ page }}
+                            </button>
+                            <span v-else class="px-2">...</span>
+                        </span>
+                        
+                        <button @click="currentPage++" 
+                                :disabled="currentPage === totalPages"
+                                class="px-3 py-2 rounded border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-angle-right"></i>
+                        </button>
+                        <button @click="currentPage = totalPages" 
+                                :disabled="currentPage === totalPages"
+                                class="px-3 py-2 rounded border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-angle-double-right"></i>
+                        </button>
+                        
+                        <select v-model="pageSize" class="ml-4 px-3 py-2 border rounded">
+                            <option :value="12">12 / 页</option>
+                            <option :value="24">24 / 页</option>
+                            <option :value="48">48 / 页</option>
+                            <option :value="100">100 / 页</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 添加/编辑工具弹窗 -->
+            <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            {{ editingTool ? '编辑工具' : '添加工具' }}
+                        </h2>
+                        <button @click="closeModal" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="saveTool" class="p-6 space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- 工具名称 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    工具名称 <span class="text-red-500">*</span>
+                                </label>
+                                <input v-model="formData.name" type="text" required
+                                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                       placeholder="例如: get_weather">
+                            </div>
+
+                            <!-- 分类 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">分类</label>
+                                <input v-model="formData.category" type="text"
+                                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                       placeholder="例如: web, file, math">
+                            </div>
+                        </div>
+
+                        <!-- 描述 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                描述 <span class="text-red-500">*</span>
+                            </label>
+                            <textarea v-model="formData.description" required rows="3"
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                      placeholder="描述这个工具的功能"></textarea>
+                        </div>
+
+                        <!-- 参数定义 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                参数定义 (JSON Schema格式)
+                            </label>
+                            <textarea v-model="parametersJson" rows="10"
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 font-mono text-sm"
+                                      placeholder='{"type": "object", "properties": {...}, "required": [...]}'></textarea>
+                            <p class="mt-1 text-sm text-gray-500">
+                                使用JSON Schema格式定义参数。
+                                <a href="#" @click.prevent="showParametersHelp = !showParametersHelp" 
+                                   class="text-purple-600 hover:underline">查看示例</a>
+                            </p>
+                            <div v-if="showParametersHelp" class="mt-2 p-4 bg-blue-50 rounded text-sm">
+                                <pre class="text-xs overflow-x-auto">{{parametersExample}}</pre>
+                            </div>
+                        </div>
+
+                        <!-- 示例调用 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">示例调用 (可选)</label>
+                            <textarea v-model="exampleCallJson" rows="5"
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 font-mono text-sm"
+                                      placeholder='{"location": "Beijing", "unit": "celsius"}'></textarea>
+                        </div>
+
+                        <!-- 标签 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">标签</label>
+                            <input v-model="formData.tags" type="text"
+                                   class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                   placeholder="用逗号分隔多个标签">
+                        </div>
+
+                        <div class="flex justify-end space-x-4 pt-4 border-t">
+                            <button type="button" @click="closeModal"
+                                    class="px-6 py-2 border rounded-lg hover:bg-gray-50">
+                                取消
+                            </button>
+                            <button type="submit"
+                                    class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                                <i class="fas fa-save mr-2"></i>保存
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 批量导入弹窗 -->
+            <div v-if="showImportModalFlag" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-file-import mr-2 text-green-600"></i>批量导入工具
+                        </h2>
+                        <button @click="closeImportModal" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        <!-- 说明 -->
+                        <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-info-circle text-blue-400"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm text-blue-700">
+                                        请输入JSON格式的工具定义数组。格式示例：
+                                    </p>
+                                    <pre class="mt-2 text-xs bg-white p-2 rounded overflow-x-auto">{{importExample}}</pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 导入内容输入 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                工具定义JSON <span class="text-red-500">*</span>
+                            </label>
+                            <textarea v-model="importJson" rows="15"
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 font-mono text-sm"
+                                      placeholder="粘贴JSON格式的工具定义数组..."></textarea>
+                        </div>
+
+                        <!-- 导入结果 -->
+                        <div v-if="importResult" class="space-y-3">
+                            <div v-if="importResult.created > 0" class="bg-green-50 border-l-4 border-green-400 p-4">
+                                <div class="flex">
+                                    <i class="fas fa-check-circle text-green-400 mt-1"></i>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-green-700 font-medium">
+                                            成功导入 {{ importResult.created }} 个工具
+                                        </p>
+                                        <ul class="mt-2 text-xs text-green-600">
+                                            <li v-for="tool in importResult.created_tools" :key="tool.id">
+                                                ✓ {{ tool.name }}
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="importResult.skipped > 0" class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                                <div class="flex">
+                                    <i class="fas fa-exclamation-triangle text-yellow-400 mt-1"></i>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-yellow-700 font-medium">
+                                            跳过 {{ importResult.skipped }} 个工具
+                                        </p>
+                                        <ul class="mt-2 text-xs text-yellow-600">
+                                            <li v-for="tool in importResult.skipped_tools" :key="tool.name">
+                                                ⚠ {{ tool.name }}: {{ tool.reason }}
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="importResult.errors > 0" class="bg-red-50 border-l-4 border-red-400 p-4">
+                                <div class="flex">
+                                    <i class="fas fa-times-circle text-red-400 mt-1"></i>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-red-700 font-medium">
+                                            失败 {{ importResult.errors }} 个工具
+                                        </p>
+                                        <ul class="mt-2 text-xs text-red-600">
+                                            <li v-for="tool in importResult.error_details" :key="tool.name">
+                                                ✗ {{ tool.name }}: {{ tool.error }}
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end space-x-4 pt-4 border-t">
+                            <button type="button" @click="closeImportModal"
+                                    class="px-6 py-2 border rounded-lg hover:bg-gray-50">
+                                取消
+                            </button>
+                            <button type="button" @click="performImport"
+                                    :disabled="!importJson || importing"
+                                    class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                <i class="fas fa-upload mr-2"></i>
+                                {{ importing ? '导入中...' : '开始导入' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/assets/js/utils/api.js"></script>
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    tools: [],
+                    loading: false,
+                    showModal: false,
+                    editingTool: null,
+                    formData: this.getEmptyForm(),
+                    parametersJson: '',
+                    exampleCallJson: '',
+                    showParametersHelp: false,
+                    parametersExample: `{
+  "type": "object",
+  "properties": {
+    "location": {
+      "type": "string",
+      "description": "城市名称"
+    },
+    "unit": {
+      "type": "string",
+      "enum": ["celsius", "fahrenheit"],
+      "description": "温度单位"
+    }
+  },
+  "required": ["location"]
+}`,
+                    // 批量导入相关
+                    showImportModalFlag: false,
+                    importJson: '',
+                    importing: false,
+                    importResult: null,
+                    importExample: `[
+  {
+    "name": "get_weather",
+    "description": "获取天气信息",
+    "category": "web",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "location": {"type": "string", "description": "城市名称"}
+      },
+      "required": ["location"]
+    },
+    "example_call": {"location": "Beijing"},
+    "tags": "weather,api"
+  }
+]`,
+                    // 搜索和过滤相关
+                    searchQuery: '',
+                    selectedCategory: '',
+                    sortBy: 'name-asc',
+                    
+                    // 分页相关
+                    currentPage: 1,
+                    pageSize: 12,
+                    
+                    // 批量操作
+                    selectedTools: []
+                };
+            },
+            async mounted() {
+                await this.loadTools();
+            },
+            computed: {
+                // 获取所有分类
+                categories() {
+                    const cats = [...new Set(this.tools.map(t => t.category).filter(Boolean))];
+                    return cats.sort();
+                },
+                // 分类数量
+                categoryCount() {
+                    return this.categories.length;
+                },
+                // 过滤后的工具
+                filteredTools() {
+                    let result = this.tools;
+                    
+                    // 搜索过滤
+                    if (this.searchQuery) {
+                        const query = this.searchQuery.toLowerCase();
+                        result = result.filter(tool => 
+                            tool.name.toLowerCase().includes(query) ||
+                            tool.description.toLowerCase().includes(query) ||
+                            (tool.tags && tool.tags.toLowerCase().includes(query))
+                        );
+                    }
+                    
+                    // 分类过滤
+                    if (this.selectedCategory) {
+                        result = result.filter(tool => tool.category === this.selectedCategory);
+                    }
+                    
+                    // 排序
+                    result = [...result].sort((a, b) => {
+                        switch (this.sortBy) {
+                            case 'name-asc':
+                                return a.name.localeCompare(b.name);
+                            case 'name-desc':
+                                return b.name.localeCompare(a.name);
+                            case 'created-desc':
+                                return new Date(b.created_at) - new Date(a.created_at);
+                            case 'created-asc':
+                                return new Date(a.created_at) - new Date(b.created_at);
+                            case 'category-asc':
+                                return (a.category || '').localeCompare(b.category || '');
+                            default:
+                                return 0;
+                        }
+                    });
+                    
+                    return result;
+                },
+                // 总页数
+                totalPages() {
+                    return Math.ceil(this.filteredTools.length / this.pageSize);
+                },
+                // 当前页的工具
+                paginatedTools() {
+                    const start = (this.currentPage - 1) * this.pageSize;
+                    const end = start + this.pageSize;
+                    return this.filteredTools.slice(start, end);
+                },
+                // 可见的页码
+                visiblePages() {
+                    const pages = [];
+                    const total = this.totalPages;
+                    const current = this.currentPage;
+                    
+                    if (total <= 7) {
+                        for (let i = 1; i <= total; i++) {
+                            pages.push(i);
+                        }
+                    } else {
+                        pages.push(1);
+                        if (current > 3) pages.push('...');
+                        
+                        for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+                            pages.push(i);
+                        }
+                        
+                        if (current < total - 2) pages.push('...');
+                        pages.push(total);
+                    }
+                    
+                    return pages;
+                }
+            },
+            watch: {
+                // 当过滤条件改变时，重置到第一页
+                searchQuery() {
+                    this.currentPage = 1;
+                },
+                selectedCategory() {
+                    this.currentPage = 1;
+                },
+                pageSize() {
+                    this.currentPage = 1;
+                }
+            },
+            methods: {
+                async loadTools() {
+                    this.loading = true;
+                    try {
+                        const tools = await api.get('/api/tools/');
+                        // 初始化每个工具的展开状态属性
+                        this.tools = tools.map(tool => ({
+                            ...tool,
+                            showDetails: false,
+                            showExample: false,
+                            expanded: false
+                        }));
+                    } catch (error) {
+                        alert('加载工具列表失败: ' + error.message);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                showAddModal() {
+                    this.editingTool = null;
+                    this.formData = this.getEmptyForm();
+                    this.parametersJson = this.parametersExample;
+                    this.exampleCallJson = '';
+                    this.showModal = true;
+                },
+                editTool(tool) {
+                    this.editingTool = tool;
+                    this.formData = {
+                        name: tool.name,
+                        description: tool.description,
+                        category: tool.category || '',
+                        tags: tool.tags || ''
+                    };
+                    this.parametersJson = JSON.stringify(tool.parameters, null, 2);
+                    this.exampleCallJson = tool.example_call ? JSON.stringify(tool.example_call, null, 2) : '';
+                    this.showModal = true;
+                },
+                async saveTool() {
+                    try {
+                        // 解析JSON
+                        const parameters = this.parametersJson ? JSON.parse(this.parametersJson) : {
+                            type: "object",
+                            properties: {},
+                            required: []
+                        };
+                        const example_call = this.exampleCallJson ? JSON.parse(this.exampleCallJson) : null;
+
+                        const data = {
+                            ...this.formData,
+                            parameters,
+                            example_call
+                        };
+
+                        if (this.editingTool) {
+                            await api.put(`/api/tools/${this.editingTool.id}`, data);
+                            alert('工具更新成功！');
+                        } else {
+                            await api.post('/api/tools/', data);
+                            alert('工具创建成功！');
+                        }
+
+                        this.closeModal();
+                        await this.loadTools();
+                    } catch (error) {
+                        alert('保存失败: ' + error.message);
+                    }
+                },
+                async deleteTool(id) {
+                    if (!confirm('确定要删除这个工具吗？')) {
+                        return;
+                    }
+
+                    try {
+                        await api.delete(`/api/tools/${id}`);
+                        alert('删除成功！');
+                        await this.loadTools();
+                    } catch (error) {
+                        alert('删除失败: ' + error.message);
+                    }
+                },
+                closeModal() {
+                    this.showModal = false;
+                    this.editingTool = null;
+                    this.showParametersHelp = false;
+                },
+                getEmptyForm() {
+                    return {
+                        name: '',
+                        description: '',
+                        category: '',
+                        tags: ''
+                    };
+                },
+                formatDate(dateString) {
+                    return new Date(dateString).toLocaleString('zh-CN');
+                },
+                // 搜索和过滤
+                clearFilters() {
+                    this.searchQuery = '';
+                    this.selectedCategory = '';
+                },
+                // 切换工具详情显示
+                toggleDetails(tool) {
+                    tool.showDetails = !tool.showDetails;
+                },
+                // 切换描述展开
+                toggleExpanded(tool) {
+                    tool.expanded = !tool.expanded;
+                },
+                // 切换示例展开
+                toggleExample(tool) {
+                    tool.showExample = !tool.showExample;
+                },
+                // 批量操作
+                toggleToolSelection(id) {
+                    const index = this.selectedTools.indexOf(id);
+                    if (index > -1) {
+                        this.selectedTools.splice(index, 1);
+                    } else {
+                        this.selectedTools.push(id);
+                    }
+                },
+                clearSelection() {
+                    this.selectedTools = [];
+                },
+                async exportSelected() {
+                    if (this.selectedTools.length === 0) {
+                        alert('请先选择要导出的工具');
+                        return;
+                    }
+                    
+                    const selectedToolsData = this.tools.filter(t => this.selectedTools.includes(t.id));
+                    const exportData = selectedToolsData.map(t => ({
+                        name: t.name,
+                        description: t.description,
+                        parameters: t.parameters,
+                        category: t.category,
+                        example_call: t.example_call,
+                        tags: t.tags
+                    }));
+                    
+                    const dataStr = JSON.stringify(exportData, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `tools_export_${new Date().toISOString().slice(0, 10)}.json`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    
+                    alert(`已导出 ${this.selectedTools.length} 个工具`);
+                },
+                async deleteSelected() {
+                    if (this.selectedTools.length === 0) {
+                        alert('请先选择要删除的工具');
+                        return;
+                    }
+                    
+                    if (!confirm(`确定要删除选中的 ${this.selectedTools.length} 个工具吗？此操作不可恢复！`)) {
+                        return;
+                    }
+                    
+                    let successCount = 0;
+                    let failCount = 0;
+                    
+                    for (const id of this.selectedTools) {
+                        try {
+                            await api.delete(`/api/tools/${id}`);
+                            successCount++;
+                        } catch (error) {
+                            failCount++;
+                            console.error(`删除工具 ${id} 失败:`, error);
+                        }
+                    }
+                    
+                    this.selectedTools = [];
+                    await this.loadTools();
+                    
+                    alert(`删除完成！成功: ${successCount}，失败: ${failCount}`);
+                },
+                // 复制工具JSON
+                copyToolJson(tool) {
+                    const toolData = {
+                        name: tool.name,
+                        description: tool.description,
+                        parameters: tool.parameters,
+                        category: tool.category,
+                        example_call: tool.example_call,
+                        tags: tool.tags
+                    };
+                    
+                    const json = JSON.stringify(toolData, null, 2);
+                    navigator.clipboard.writeText(json).then(() => {
+                        alert('已复制工具JSON到剪贴板');
+                    }).catch(err => {
+                        console.error('复制失败:', err);
+                        alert('复制失败，请手动复制');
+                    });
+                },
+                // 批量导入相关方法
+                showImportModal() {
+                    this.showImportModalFlag = true;
+                    this.importJson = '';
+                    this.importResult = null;
+                },
+                closeImportModal() {
+                    this.showImportModalFlag = false;
+                    this.importJson = '';
+                    this.importResult = null;
+                },
+                async performImport() {
+                    if (!this.importJson.trim()) {
+                        alert('请输入要导入的JSON内容');
+                        return;
+                    }
+
+                    this.importing = true;
+                    this.importResult = null;
+
+                    try {
+                        // 解析JSON
+                        const toolsData = JSON.parse(this.importJson);
+                        
+                        // 验证是否为数组
+                        if (!Array.isArray(toolsData)) {
+                            alert('JSON格式错误：必须是数组格式');
+                            return;
+                        }
+
+                        // 调用批量导入API
+                        this.importResult = await api.post('/api/tools/batch-import', toolsData);
+                        
+                        // 如果有成功导入的，刷新列表
+                        if (this.importResult.created > 0) {
+                            await this.loadTools();
+                        }
+
+                        // 显示总结信息
+                        const summary = [];
+                        if (this.importResult.created > 0) {
+                            summary.push(`成功导入 ${this.importResult.created} 个工具`);
+                        }
+                        if (this.importResult.skipped > 0) {
+                            summary.push(`跳过 ${this.importResult.skipped} 个工具`);
+                        }
+                        if (this.importResult.errors > 0) {
+                            summary.push(`失败 ${this.importResult.errors} 个工具`);
+                        }
+                        
+                        if (this.importResult.created > 0 || this.importResult.skipped > 0) {
+                            alert('导入完成！\n' + summary.join('\n'));
+                        }
+
+                    } catch (error) {
+                        if (error instanceof SyntaxError) {
+                            alert('JSON格式错误: ' + error.message);
+                        } else {
+                            alert('导入失败: ' + error.message);
+                        }
+                    } finally {
+                        this.importing = false;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

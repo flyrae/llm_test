@@ -1,0 +1,140 @@
+[
+  {
+    "name": "get_weather",
+    "description": "获取指定城市的天气信息",
+    "category": "web",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string",
+          "description": "城市名称，例如：北京、上海"
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["celsius", "fahrenheit"],
+          "description": "温度单位"
+        }
+      },
+      "required": ["location"]
+    },
+    "example_call": {
+      "location": "北京",
+      "unit": "celsius"
+    },
+    "tags": "weather,api,web"
+  },
+  {
+    "name": "calculate_sum",
+    "description": "计算多个数字的总和",
+    "category": "math",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "numbers": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "要计算的数字数组"
+        }
+      },
+      "required": ["numbers"]
+    },
+    "example_call": {
+      "numbers": [1, 2, 3, 4, 5]
+    },
+    "tags": "math,calculation"
+  },
+  {
+    "name": "read_file",
+    "description": "读取指定路径的文件内容",
+    "category": "file",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "file_path": {
+          "type": "string",
+          "description": "文件的完整路径"
+        },
+        "encoding": {
+          "type": "string",
+          "enum": ["utf-8", "gbk", "ascii"],
+          "description": "文件编码格式，默认为utf-8"
+        }
+      },
+      "required": ["file_path"]
+    },
+    "example_call": {
+      "file_path": "/path/to/file.txt",
+      "encoding": "utf-8"
+    },
+    "tags": "file,io"
+  },
+  {
+    "name": "send_email",
+    "description": "发送电子邮件",
+    "category": "communication",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "to": {
+          "type": "string",
+          "description": "收件人邮箱地址"
+        },
+        "subject": {
+          "type": "string",
+          "description": "邮件主题"
+        },
+        "body": {
+          "type": "string",
+          "description": "邮件正文"
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "附件文件路径列表"
+        }
+      },
+      "required": ["to", "subject", "body"]
+    },
+    "example_call": {
+      "to": "user@example.com",
+      "subject": "测试邮件",
+      "body": "这是一封测试邮件"
+    },
+    "tags": "email,communication"
+  },
+  {
+    "name": "search_database",
+    "description": "在数据库中搜索数据",
+    "category": "database",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "description": "要搜索的表名"
+        },
+        "query": {
+          "type": "string",
+          "description": "搜索查询条件（SQL WHERE子句）"
+        },
+        "limit": {
+          "type": "integer",
+          "description": "返回结果的最大数量",
+          "default": 100
+        }
+      },
+      "required": ["table", "query"]
+    },
+    "example_call": {
+      "table": "users",
+      "query": "age > 18",
+      "limit": 50
+    },
+    "tags": "database,search,sql"
+  }
+]

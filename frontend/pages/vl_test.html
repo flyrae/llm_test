@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VL模型测试 - LLM Test Tool</title>
+    <script src="/assets/vendor/vue/vue.global.js"></script>
+    <script src="/assets/vendor/tailwind/tailwind.js"></script>
+    <link rel="stylesheet" href="/assets/vendor/fontawesome/all.min.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body class="bg-gray-50">
+    <div id="app" v-cloak>
+        <nav class="bg-white shadow-lg mb-8">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-robot text-2xl text-blue-600"></i>
+                        <span class="text-xl font-bold text-gray-800">LLM Test Tool</span>
+                    </div>
+                    <div class="flex space-x-4">
+                        <a href="/" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-home mr-2"></i>首页
+                        </a>
+                        <a href="/pages/models.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2"></i>模型配置
+                        </a>
+                        <a href="/pages/testcases.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-tasks mr-2"></i>测试用例
+                        </a>
+                        <a href="/pages/tools.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-wrench mr-2"></i>工具管理
+                        </a>
+                        <a href="/pages/system_prompts.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-comment-dots mr-2"></i>系统提示词
+                        </a>
+                        <a href="/pages/debug.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-bug mr-2"></i>调试
+                        </a>
+                        <a href="/pages/compare.html" class="px-4 py-2 rounded-md text-gray-600 hover:bg-gray-100">
+                            <i class="fas fa-code-compare mr-2"></i>对比测试
+                        </a>
+                        <a href="/pages/vl_test.html" class="px-4 py-2 rounded-md bg-green-100 text-green-700">
+                            <i class="fas fa-image mr-2"></i>VL模型测试
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        <main class="max-w-2xl mx-auto px-4 py-8 bg-white rounded-lg shadow">
+            <h1 class="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+                <i class="fas fa-image mr-2 text-green-600"></i>VL模型测试（Qwen-VL）
+            </h1>
+            <form @submit.prevent="submit" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">上传图片</label>
+                    <input type="file" accept="image/*" @change="onFileChange" required class="form-input" />
+                    <div v-if="imageUrl" class="mt-2">
+                        <img :src="imageUrl" alt="预览" class="max-h-48 rounded border" />
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">输入文本</label>
+                    <input v-model="prompt" type="text" class="form-input w-full" placeholder="请输入问题或描述..." required />
+                </div>
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="fas fa-paper-plane mr-2"></i>提交
+                </button>
+            </form>
+            <div v-if="loading" class="text-center py-8">
+                <div class="loading mx-auto"></div>
+                <p class="mt-4 text-gray-600">推理中...</p>
+            </div>
+            <div v-if="result" class="mt-8">
+                <h2 class="text-lg font-bold mb-2 text-gray-700">模型输出</h2>
+                <pre class="bg-gray-100 rounded p-4 text-gray-800 whitespace-pre-wrap">{{ result }}</pre>
+            </div>
+            <div v-if="error" class="mt-8">
+                <div class="toast toast-error">{{ error }}</div>
+            </div>
+        </main>
+    </div>
+    <script>
+    const { createApp } = Vue;
+    createApp({
+        data() {
+            return {
+                imageFile: null,
+                imageUrl: '',
+                prompt: '',
+                loading: false,
+                result: '',
+                error: ''
+            }
+        },
+        methods: {
+            onFileChange(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    this.imageFile = file;
+                    this.imageUrl = URL.createObjectURL(file);
+                }
+            },
+            async submit() {
+                if (!this.imageFile || !this.prompt) return;
+                this.loading = true;
+                this.result = '';
+                this.error = '';
+                try {
+                    const formData = new FormData();
+                    formData.append('image', this.imageFile);
+                    formData.append('prompt', this.prompt);
+                    const resp = await fetch('/api/vl/infer', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (!resp.ok) throw new Error('推理失败: ' + resp.status);
+                    const data = await resp.json();
+                    // 兼容OpenAI风格返回
+                    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+                        this.result = data.choices[0].message.content;
+                    } else {
+                        this.result = JSON.stringify(data, null, 2);
+                    }
+                } catch (e) {
+                    this.error = e.message;
+                } finally {
+                    this.loading = false;
+                }
+            }
+        }
+    }).mount('#app');
+    </script>
+</body>
+</html>

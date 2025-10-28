@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>API测试页面</h1>
+    
+    <div class="test-section">
+        <h2>测试 /api/models/</h2>
+        <button onclick="testModelsGet()">GET /api/models/</button>
+        <button onclick="testModelsPost()">POST /api/models/</button>
+        <div id="models-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试 /api/testcases/</h2>
+        <button onclick="testTestcasesGet()">GET /api/testcases/</button>
+        <button onclick="testTestcasesPost()">POST /api/testcases/</button>
+        <div id="testcases-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        function displayResult(elementId, success, data) {
+            const element = document.getElementById(elementId);
+            if (success) {
+                element.innerHTML = `<p class="success">✅ 成功</p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } else {
+                element.innerHTML = `<p class="error">❌ 失败: ${data}</p>`;
+            }
+        }
+
+        async function testModelsGet() {
+            try {
+                const response = await fetch(`${API_BASE}/api/models/`);
+                const data = await response.json();
+                displayResult('models-result', response.ok, data);
+            } catch (error) {
+                displayResult('models-result', false, error.message);
+            }
+        }
+
+        async function testModelsPost() {
+            try {
+                const testData = {
+                    name: "测试模型",
+                    provider: "openai",
+                    model_name: "gpt-3.5-turbo",
+                    api_key: "test-key",
+                    api_base: "https://api.openai.com/v1",
+                    default_params: {
+                        temperature: 0.7,
+                        max_tokens: 1000
+                    }
+                };
+                const response = await fetch(`${API_BASE}/api/models/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                const data = await response.json();
+                displayResult('models-result', response.ok, data);
+            } catch (error) {
+                displayResult('models-result', false, error.message);
+            }
+        }
+
+        async function testTestcasesGet() {
+            try {
+                const response = await fetch(`${API_BASE}/api/testcases/`);
+                const data = await response.json();
+                displayResult('testcases-result', response.ok, data);
+            } catch (error) {
+                displayResult('testcases-result', false, error.message);
+            }
+        }
+
+        async function testTestcasesPost() {
+            try {
+                const testData = {
+                    name: "测试用例",
+                    prompt: "你好",
+                    expected_output: "你好！有什么我可以帮助你的吗？",
+                    category: "greeting",
+                    tags: ["basic", "greeting"]
+                };
+                const response = await fetch(`${API_BASE}/api/testcases/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                const data = await response.json();
+                displayResult('testcases-result', response.ok, data);
+            } catch (error) {
+                displayResult('testcases-result', false, error.message);
+            }
+        }
+    </script>
+</body>
+</html>
