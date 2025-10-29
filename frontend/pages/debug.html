@@ -1006,15 +1006,22 @@
                                             <div class="font-medium flex items-center">
                                                 <i class="fas mr-2 transition-transform"
                                                    :class="isToolCallExpanded(index, idx) ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-                                                {{ call.function.name }}
+                                                {{ getToolCallName(call) }}
+                                                <span v-if="getToolCallType(call)" class="ml-2 text-[10px] uppercase text-gray-500">{{ getToolCallType(call) }}</span>
                                             </div>
                                             <span class="text-gray-500 text-xs">
                                                 <i class="fas fa-eye mr-1"></i>{{ isToolCallExpanded(index, idx) ? '收起' : '展开' }}
                                             </span>
                                         </div>
                                         <div v-show="isToolCallExpanded(index, idx)" class="mt-2 pt-2 border-t border-yellow-200">
-                                            <div class="text-gray-600 mb-1 font-medium">参数:</div>
-                                            <pre class="text-gray-600 font-mono bg-white p-2 rounded border border-yellow-200 overflow-x-auto max-h-64 overflow-y-auto">{{ formatJson(call.function.arguments) }}</pre>
+                                            <div v-if="getToolCallArguments(call) !== null" class="mb-3">
+                                                <div class="text-gray-600 mb-1 font-medium">参数:</div>
+                                                <pre class="text-gray-600 font-mono bg-white p-2 rounded border border-yellow-200 overflow-x-auto max-h-64 overflow-y-auto">{{ formatJson(getToolCallArguments(call)) }}</pre>
+                                            </div>
+                                            <div v-if="getToolCallResult(call) !== null">
+                                                <div class="text-gray-600 mb-1 font-medium">结果:</div>
+                                                <pre class="text-gray-600 font-mono bg-white p-2 rounded border border-yellow-200 overflow-x-auto max-h-64 overflow-y-auto">{{ formatJson(getToolCallResult(call)) }}</pre>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1224,18 +1231,24 @@
                                     <div class="flex items-center">
                                         <i class="fas mr-2 transition-transform"
                                            :class="isToolCallExpanded('response', index) ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-                                        <span class="font-semibold text-sm">{{ call.function.name }}</span>
-                                        <span class="ml-2 text-xs text-gray-500">({{ call.type }})</span>
+                                        <span class="font-semibold text-sm">{{ getToolCallName(call) }}</span>
+                                        <span v-if="getToolCallType(call)" class="ml-2 text-xs text-gray-500">({{ getToolCallType(call) }})</span>
                                     </div>
                                     <span class="text-gray-500 text-xs">
                                         <i class="fas fa-eye mr-1"></i>{{ isToolCallExpanded('response', index) ? '收起' : '展开' }}详情
                                     </span>
                                 </div>
                                 <div v-show="isToolCallExpanded('response', index)" class="p-3 border-t border-yellow-200">
-                                    <div class="text-xs text-gray-600 mb-2">调用ID: <code class="bg-gray-100 px-1 rounded">{{ call.id }}</code></div>
-                                    <div class="text-sm">
-                                        <div class="font-medium text-gray-700 mb-1">参数:</div>
-                                        <pre class="bg-gray-50 p-3 rounded text-xs overflow-x-auto max-h-96 overflow-y-auto border border-gray-200">{{ formatJson(call.function.arguments) }}</pre>
+                                    <div v-if="call.id" class="text-xs text-gray-600 mb-2">调用ID: <code class="bg-gray-100 px-1 rounded">{{ call.id }}</code></div>
+                                    <div class="text-sm space-y-3">
+                                        <div v-if="getToolCallArguments(call) !== null">
+                                            <div class="font-medium text-gray-700 mb-1">参数:</div>
+                                            <pre class="bg-gray-50 p-3 rounded text-xs overflow-x-auto max-h-96 overflow-y-auto border border-gray-200">{{ formatJson(getToolCallArguments(call)) }}</pre>
+                                        </div>
+                                        <div v-if="getToolCallResult(call) !== null">
+                                            <div class="font-medium text-gray-700 mb-1">结果:</div>
+                                            <pre class="bg-gray-50 p-3 rounded text-xs overflow-x-auto max-h-96 overflow-y-auto border border-gray-200">{{ formatJson(getToolCallResult(call)) }}</pre>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1612,9 +1625,14 @@
 
                         // 保存当前用户输入到对话历史（使用统一的content变量）
                         const currentUserMessage = content;
+                        const promptTextForDisplay = typeof currentUserMessage === 'string'
+                            ? currentUserMessage
+                            : JSON.stringify(currentUserMessage, null, 2);
 
                         // 保存请求信息
-                        this.lastRequest = JSON.parse(JSON.stringify(requestData));
+                        const lastRequestCopy = JSON.parse(JSON.stringify(requestData));
+                        lastRequestCopy.prompt = promptTextForDisplay;
+                        this.lastRequest = lastRequestCopy;
 
                         if (this.streamMode) {
                             await this.sendStreamMessage(requestData);
@@ -1623,25 +1641,32 @@
                         }
 
                         if (this.response && this.response.status === 'success') {
-                            this.conversationHistory.push({
-                                role: 'user',
-                                content: currentUserMessage
-                            });
+                            // 如果响应中包含完整的对话历史(Agent模式),使用它
+                            if (this.response.conversation_history && this.response.conversation_history.length > 0) {
+                                this.conversationHistory = JSON.parse(JSON.stringify(this.response.conversation_history));
+                                console.log('使用 Agent 返回的对话历史:', this.conversationHistory.length, '条消息');
+                            } else {
+                                // 否则手动构建对话历史(兼容非Agent模式)
+                                this.conversationHistory.push({
+                                    role: 'user',
+                                    content: currentUserMessage
+                                });
 
-                            const assistantMessage = {
-                                role: 'assistant',
-                                content: this.response.output || ''
-                            };
-                            if (this.response.tool_calls && this.response.tool_calls.length > 0) {
-                                assistantMessage.tool_calls = this.response.tool_calls;
+                                const assistantMessage = {
+                                    role: 'assistant',
+                                    content: this.response.output || ''
+                                };
+                                if (this.response.tool_calls && this.response.tool_calls.length > 0) {
+                                    assistantMessage.tool_calls = JSON.parse(JSON.stringify(this.response.tool_calls));
+                                }
+                                this.conversationHistory.push(assistantMessage);
                             }
-                            this.conversationHistory.push(assistantMessage);
                             this.userPrompt = '';
                             this.imageFile = null;
                             this.imagePreview = '';
                         }
                         if (this.response) {
-                            this.saveToHistory();
+                            this.saveToHistory(promptTextForDisplay);
                         }
                     } catch (error) {
                         alert('请求失败: ' + error.message);
@@ -1681,6 +1706,8 @@
                         }
                     };
 
+                    let streamCompleted = false;
+                    
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
@@ -1693,6 +1720,7 @@
                             if (line.startsWith('data: ')) {
                                 const data = line.slice(6);
                                 if (data === '[DONE]') {
+                                    streamCompleted = true;
                                     continue;
                                 }
                                 
@@ -1720,13 +1748,26 @@
                                             // 使用最终响应替换
                                             this.response = chunk.final_response;
                                         }
+                                        streamCompleted = true;
                                     }
                                 } catch (e) {
                                     console.error('解析流式数据失败:', e, data);
                                 }
                             }
                         }
+                        
+                        // 如果收到完成信号，主动退出循环
+                        if (streamCompleted) {
+                            try {
+                                await reader.cancel();
+                            } catch (e) {
+                                console.log('关闭reader时出错:', e);
+                            }
+                            break;
+                        }
                     }
+                    
+                    console.log('流式响应完成，状态:', this.response.status);
                 },
                 clearAll() {
                     this.userPrompt = '';
@@ -1838,11 +1879,11 @@
                         this.savingTestCase = false;
                     }
                 },
-                saveToHistory() {
+                saveToHistory(promptText) {
                     const item = {
                         timestamp: new Date().toISOString(),
                         model_id: this.selectedModelId,
-                        prompt: this.userPrompt,
+                        prompt: promptText || '',
                         system_prompt: this.systemPrompt,
                         response: this.response,
                         lastRequest: this.lastRequest
@@ -1859,7 +1900,7 @@
                         const lightHistory = this.history.map(h => ({
                             timestamp: h.timestamp,
                             model_id: h.model_id,
-                            prompt: h.prompt.substring(0, 200), // Truncate long prompts
+                            prompt: (h.prompt || '').substring(0, 200), // Truncate long prompts
                             system_prompt: h.system_prompt ? h.system_prompt.substring(0, 200) : '',
                             output: h.response?.output ? h.response.output.substring(0, 500) : '' // Store summary only
                         }));
@@ -1929,6 +1970,35 @@
                     } catch (e) {
                         return str;
                     }
+                },
+                getToolCallName(call) {
+                    if (!call) return '未知工具';
+                    if (call.function && call.function.name) return call.function.name;
+                    if (call.tool_name) return call.tool_name;
+                    if (call.name) return call.name;
+                    return call.id ? `调用 ${call.id}` : '未知工具';
+                },
+                getToolCallType(call) {
+                    if (!call) return '';
+                    if (call.type) return call.type;
+                    if (call.function) return 'function';
+                    if (call.tool_name) return 'mock';
+                    return '';
+                },
+                getToolCallArguments(call) {
+                    if (!call) return null;
+                    if (call.function && call.function.arguments !== undefined) return call.function.arguments;
+                    if (call.arguments !== undefined) return call.arguments;
+                    if (call.input !== undefined) return call.input;
+                    if (call.inputs !== undefined) return call.inputs;
+                    return null;
+                },
+                getToolCallResult(call) {
+                    if (!call) return null;
+                    if (call.result !== undefined) return call.result;
+                    if (call.output !== undefined) return call.output;
+                    if (call.response !== undefined) return call.response;
+                    return null;
                 },
                 // 切换工具调用详情的展开/折叠状态
                 toggleToolCallDetails(messageIndex, callIndex) {
