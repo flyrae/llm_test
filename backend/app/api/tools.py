@@ -94,7 +94,10 @@ async def update_tool(
     
     # 处理parameters
     if "parameters" in update_data and update_data["parameters"]:
-        update_data["parameters"] = update_data["parameters"].model_dump()
+        if hasattr(update_data["parameters"], "model_dump"):
+            update_data["parameters"] = update_data["parameters"].model_dump()
+        elif not isinstance(update_data["parameters"], dict):
+            raise HTTPException(status_code=400, detail="parameters 必须是对象")
     
     for key, value in update_data.items():
         setattr(db_tool, key, value)
