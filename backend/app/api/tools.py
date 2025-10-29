@@ -1,12 +1,20 @@
 """工具定义管理API"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
 
 from app.utils.database import get_db
 from app.models.tool_definition import (
     ToolDefinitionDB, ToolDefinitionCreate, ToolDefinitionUpdate, ToolDefinitionResponse
 )
+from app.models.model_config import ModelConfigDB
+from app.models.tool_mock_generation import (
+    ToolMockGenerationRequest,
+    ToolMockGenerationResponse,
+)
+from app.services.mock_tool_executor import MockToolExecutor
+from app.services.tool_mock_generator import ToolMockGeneratorService
 
 router = APIRouter()
 
@@ -94,6 +102,39 @@ async def update_tool(
     db.commit()
     db.refresh(db_tool)
     return db_tool
+
+
+@router.post("/{tool_id}/mock/generate", response_model=ToolMockGenerationResponse)
+async def generate_mock_config(
+    tool_id: int,
+    request: ToolMockGenerationRequest,
+    db: Session = Depends(get_db)
+):
+    """使用大模型生成指定工具的 mock 配置"""
+
+    db_tool = db.query(ToolDefinitionDB).filter(ToolDefinitionDB.id == tool_id).first()
+    if not db_tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
+
+    model = db.query(ModelConfigDB).filter(ModelConfigDB.id == request.model_id).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model config not found")
+
+    if request.persist and db_tool.mock_responses and not request.overwrite:
+        raise HTTPException(
+            status_code=400,
+            detail="Mock config already exists. Set overwrite=true to replace it."
+        )
+
+    result = await ToolMockGeneratorService.generate_mock_config(db_tool, model, request)
+
+    if result.status == "success" and request.persist:
+        db_tool.mock_responses = result.mock_config
+        db.commit()
+        db.refresh(db_tool)
+        result = result.model_copy(update={"saved": True})
+
+    return result
 
 
 @router.delete("/{tool_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -298,3 +339,28 @@ async def batch_import_tools(
         "created_tools": created_tools,
         "errors": errors
     }
+
+
+@router.get("/mock/presets")
+async def get_mock_presets():
+    """获取Mock配置预设模板"""
+    return {
+        "presets": MockToolExecutor.list_preset_templates()
+    }
+
+
+class MockConfigValidateRequest(BaseModel):
+    """Mock配置验证请求"""
+    mock_config: Dict[str, Any]
+
+
+@router.post("/mock/validate")
+async def validate_mock_config(request: MockConfigValidateRequest):
+    """验证Mock配置"""
+    is_valid, error_message = MockToolExecutor.validate_mock_config(request.mock_config)
+    
+    return {
+        "valid": is_valid,
+        "error": error_message
+    }
+

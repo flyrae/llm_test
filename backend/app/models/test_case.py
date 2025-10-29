@@ -1,5 +1,5 @@
 """测试用例数据模型"""
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Boolean
 from sqlalchemy.sql import func
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
@@ -24,6 +24,7 @@ class TestCaseDB(Base):
     tools = Column(JSON)  # 关联的工具ID列表
     expected_tool_calls = Column(JSON)  # 期望的工具调用（用于评估）
     evaluation_weights = Column(JSON)  # 评分权重配置 {tool_calls: 70, text_similarity: 20, custom_criteria: 10}
+    use_mock = Column(Boolean, default=False)  # 是否使用模拟工具执行
     tags = Column(String(200))
     meta_data = Column(JSON)  # 其他元数据
     created_at = Column(DateTime, default=func.now())
@@ -43,6 +44,7 @@ class TestCaseCreate(BaseModel):
     tools: Optional[List[int]] = None  # 关联的工具ID列表
     expected_tool_calls: Optional[List[Dict[str, Any]]] = None  # 期望的工具调用
     evaluation_weights: Optional[Dict[str, int]] = None  # 评分权重配置
+    use_mock: Optional[bool] = Field(default=False, description="是否使用模拟工具执行")
     tags: Optional[str] = None
     meta_data: Optional[Dict[str, Any]] = None
 
@@ -59,6 +61,7 @@ class TestCaseUpdate(BaseModel):
     tools: Optional[List[int]] = None  # 关联的工具ID列表
     expected_tool_calls: Optional[List[Dict[str, Any]]] = None  # 期望的工具调用
     evaluation_weights: Optional[Dict[str, int]] = None  # 评分权重配置
+    use_mock: Optional[bool] = None  # 是否使用模拟工具执行
     tags: Optional[str] = None
     meta_data: Optional[Dict[str, Any]] = None
 
@@ -76,6 +79,7 @@ class TestCaseResponse(BaseModel):
     tools: Optional[List[int]]  # 关联的工具ID列表
     expected_tool_calls: Optional[List[Dict[str, Any]]]  # 期望的工具调用
     evaluation_weights: Optional[Dict[str, int]]  # 评分权重配置
+    use_mock: Optional[bool]  # 是否使用模拟工具执行
     tags: Optional[str]
     meta_data: Optional[Dict[str, Any]]
     created_at: datetime

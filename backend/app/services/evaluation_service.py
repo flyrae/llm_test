@@ -17,7 +17,9 @@ class EvaluationService:
         tool_calls: Optional[List[Dict[str, Any]]],
         expected_tool_calls: Optional[List[Dict[str, Any]]],
         evaluation_criteria: Optional[Dict[str, Any]] = None,
-        evaluation_weights: Optional[Dict[str, int]] = None
+        evaluation_weights: Optional[Dict[str, int]] = None,
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        tool_call_history: Optional[List[Dict[str, Any]]] = None
     ) -> Tuple[float, Dict[str, Any]]:
         """
         评估测试结果
@@ -28,7 +30,9 @@ class EvaluationService:
             tool_calls: 模型的工具调用
             expected_tool_calls: 期望的工具调用
             evaluation_criteria: 评估标准
-            evaluation_weights: 评分权重配置 {tool_calls: 70, text_similarity: 20, custom_criteria: 10}
+            evaluation_weights: 评分权重配置 {tool_calls: 50, text_similarity: 20, tool_flow: 20, custom_criteria: 10}
+            conversation_history: 对话历史（用于流程评估）
+            tool_call_history: 工具调用历史（用于流程评估）
         
         Returns:
             (score, details) - 分数和详细信息
@@ -39,8 +43,9 @@ class EvaluationService:
         # 使用默认权重或用户自定义权重
         if not evaluation_weights:
             evaluation_weights = {
-                'tool_calls': 70,
+                'tool_calls': 50,
                 'text_similarity': 20,
+                'tool_flow': 20,
                 'custom_criteria': 10
             }
         
@@ -50,7 +55,7 @@ class EvaluationService:
                 tool_calls, expected_tool_calls
             )
             scores['tool_call'] = tool_score
-            details['tool_calls'] = tool_details  # 注意：这里改为 tool_calls（复数）以匹配前端
+            details['tool_calls'] = tool_details
             logger.info(f"📊 工具调用评分: {tool_score:.2f}")
         
         # 2. 评估文本输出（如果有期望输出）
@@ -66,7 +71,19 @@ class EvaluationService:
             }
             logger.info(f"📊 文本相似度: {text_score:.2f}")
         
-        # 3. 应用自定义评估标准
+        # 3. 评估工具使用流程（新增）
+        if expected_tool_calls and (tool_call_history or conversation_history):
+            flow_score, flow_details = EvaluationService.evaluate_tool_usage_flow(
+                conversation_history=conversation_history,
+                tool_call_history=tool_call_history,
+                final_output=output,
+                expected_tool_calls=expected_tool_calls
+            )
+            scores['tool_flow'] = flow_score
+            details['tool_flow'] = flow_details
+            logger.info(f"📊 工具使用流程: {flow_score:.2f}")
+        
+        # 4. 应用自定义评估标准
         if evaluation_criteria:
             custom_score = EvaluationService._apply_custom_criteria(
                 output, tool_calls, evaluation_criteria
@@ -82,12 +99,16 @@ class EvaluationService:
             total_weight = 0
             
             if 'tool_call' in scores:
-                weights['tool_call'] = evaluation_weights.get('tool_calls', 70) / 100.0
-                total_weight += evaluation_weights.get('tool_calls', 70)
+                weights['tool_call'] = evaluation_weights.get('tool_calls', 50) / 100.0
+                total_weight += evaluation_weights.get('tool_calls', 50)
             
             if 'text_similarity' in scores:
                 weights['text_similarity'] = evaluation_weights.get('text_similarity', 20) / 100.0
                 total_weight += evaluation_weights.get('text_similarity', 20)
+            
+            if 'tool_flow' in scores:
+                weights['tool_flow'] = evaluation_weights.get('tool_flow', 20) / 100.0
+                total_weight += evaluation_weights.get('tool_flow', 20)
             
             if 'custom' in scores:
                 weights['custom'] = evaluation_weights.get('custom_criteria', 10) / 100.0
@@ -389,3 +410,114 @@ class EvaluationService:
             logger.warning(f"自定义标准检查失败: {', '.join(penalties)}")
         
         return max(0.0, score)
+    
+    @staticmethod
+    def evaluate_tool_usage_flow(
+        conversation_history: Optional[List[Dict[str, Any]]],
+        tool_call_history: Optional[List[Dict[str, Any]]],
+        final_output: str,
+        expected_tool_calls: Optional[List[Dict[str, Any]]] = None
+    ) -> Tuple[float, Dict[str, Any]]:
+        """
+        评估工具使用流程的完整性
+        
+        评分维度：
+        1. 是否执行了工具调用 (20分)
+        2. 工具结果是否在对话历史中 (20分)
+        3. 最终答案是否基于工具结果 (30分)
+        4. 工具调用顺序是否合理 (30分)
+        
+        Args:
+            conversation_history: 对话历史（包含tool消息）
+            tool_call_history: 工具调用历史
+            final_output: 最终输出
+            expected_tool_calls: 期望的工具调用
+        
+        Returns:
+            (score, details) - 分数和详细信息
+        """
+        details = {
+            "has_tool_execution": 0.0,
+            "has_tool_results_in_history": 0.0,
+            "final_answer_uses_tool_data": 0.0,
+            "tool_sequence_reasonable": 0.0,
+            "issues": []
+        }
+        
+        # 如果没有期望工具调用，返回满分
+        if not expected_tool_calls:
+            details["has_tool_execution"] = 20.0
+            details["has_tool_results_in_history"] = 20.0
+            details["final_answer_uses_tool_data"] = 30.0
+            details["tool_sequence_reasonable"] = 30.0
+            return 1.0, details
+        
+        # 1. 是否执行了工具调用
+        if tool_call_history and len(tool_call_history) > 0:
+            details["has_tool_execution"] = 20.0
+        else:
+            details["issues"].append("未执行任何工具调用")
+        
+        # 2. 工具结果是否在对话历史中
+        if conversation_history:
+            tool_messages = [msg for msg in conversation_history if msg.get("role") == "tool"]
+            if tool_messages:
+                details["has_tool_results_in_history"] = 20.0
+            else:
+                details["issues"].append("对话历史中缺少工具执行结果")
+        
+        # 3. 最终答案是否基于工具结果
+        if tool_call_history and final_output:
+            # 检查工具返回的关键数据是否出现在最终输出中
+            tool_data_found = False
+            for tool_call in tool_call_history:
+                tool_result = tool_call.get("result", {})
+                # 提取工具结果中的关键值
+                if isinstance(tool_result, dict):
+                    for key, value in tool_result.items():
+                        if key not in ["success", "timestamp", "tool_name", "_mock_mode"]:
+                            # 检查值是否在最终输出中
+                            value_str = str(value)
+                            if len(value_str) > 3 and value_str in final_output:
+                                tool_data_found = True
+                                break
+                if tool_data_found:
+                    break
+            
+            if tool_data_found:
+                details["final_answer_uses_tool_data"] = 30.0
+            else:
+                details["issues"].append("最终答案未使用工具返回的数据")
+                # 给部分分（至少尝试了工具调用）
+                details["final_answer_uses_tool_data"] = 10.0
+        
+        # 4. 工具调用顺序是否合理
+        if tool_call_history:
+            # 检查是否有重复的无意义调用
+            tool_names = [tc.get("tool_name") for tc in tool_call_history]
+            unique_tools = set(tool_names)
+            
+            # 如果工具调用数量合理（不超过期望的2倍）
+            if len(tool_call_history) <= len(expected_tool_calls) * 2:
+                details["tool_sequence_reasonable"] = 30.0
+            else:
+                details["issues"].append(f"工具调用次数过多 ({len(tool_call_history)} 次)")
+                # 给部分分
+                details["tool_sequence_reasonable"] = 15.0
+        else:
+            details["issues"].append("无工具调用序列")
+        
+        # 计算总分
+        total_score = (
+            details["has_tool_execution"] +
+            details["has_tool_results_in_history"] +
+            details["final_answer_uses_tool_data"] +
+            details["tool_sequence_reasonable"]
+        ) / 100.0
+        
+        logger.info(f"🔍 工具使用流程评估: {total_score:.2f}")
+        if details["issues"]:
+            logger.warning(f"⚠️ 发现问题: {', '.join(details['issues'])}")
+        
+        return total_score, details
+

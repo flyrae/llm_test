@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     
     # 服务器配置
     HOST: str = "0.0.0.0"
-    PORT: int = 8008
+    PORT: int = 8099
     
     # 数据库配置
     BASE_DIR: Path = Path(__file__).parent.parent

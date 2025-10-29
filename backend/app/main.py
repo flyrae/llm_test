@@ -9,7 +9,7 @@ import logging
 
 from app.config import settings
 from app.utils.database import init_db
-from app.api import models, testcases, debug, batch, tools, vl, system_prompts
+from app.api import models, testcases, debug, batch, tools, vl, system_prompts, training_data
 
 # 配置日志
 logging.basicConfig(
@@ -62,6 +62,7 @@ app.include_router(batch.router, prefix="/api/batch", tags=["batch"])
 app.include_router(tools.router, prefix="/api/tools", tags=["tools"])
 app.include_router(vl.router, prefix="/api/vl", tags=["vl"])
 app.include_router(system_prompts.router, prefix="/api/system-prompts", tags=["system-prompts"])
+app.include_router(training_data.router, prefix="/api/training-data", tags=["training-data"])
 
 
 @app.get("/api/health")

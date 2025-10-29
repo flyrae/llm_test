@@ -61,6 +61,7 @@ async def create_test_case(
         tools=test_case.tools,
         expected_tool_calls=test_case.expected_tool_calls,
         evaluation_weights=test_case.evaluation_weights,
+        use_mock=test_case.use_mock,
         tags=test_case.tags,
         meta_data=test_case.meta_data
     )

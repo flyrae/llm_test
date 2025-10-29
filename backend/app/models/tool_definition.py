@@ -19,6 +19,7 @@ class ToolDefinitionDB(Base):
     parameters = Column(JSON, nullable=False)  # JSON Schema格式的参数定义
     category = Column(String(50))  # 工具分类：web, file, math, custom等
     example_call = Column(JSON)  # 示例调用
+    mock_responses = Column(JSON)  # 模拟响应配置
     tags = Column(String(200))
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -53,6 +54,7 @@ class ToolDefinitionCreate(BaseModel):
     )
     category: Optional[str] = Field(None, description="工具分类")
     example_call: Optional[Dict[str, Any]] = Field(None, description="示例调用")
+    mock_responses: Optional[Dict[str, Any]] = Field(None, description="模拟响应配置")
     tags: Optional[str] = Field(None, description="标签")
     
     @field_validator('parameters', mode='before')
@@ -74,6 +76,7 @@ class ToolDefinitionUpdate(BaseModel):
     parameters: Optional[ToolParameters] = None
     category: Optional[str] = None
     example_call: Optional[Dict[str, Any]] = None
+    mock_responses: Optional[Dict[str, Any]] = None
     tags: Optional[str] = None
 
 
@@ -85,6 +88,7 @@ class ToolDefinitionResponse(BaseModel):
     parameters: Dict[str, Any]
     category: Optional[str]
     example_call: Optional[Dict[str, Any]]
+    mock_responses: Optional[Dict[str, Any]]
     tags: Optional[str]
     created_at: datetime
     updated_at: datetime

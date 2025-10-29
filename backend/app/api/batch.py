@@ -13,6 +13,7 @@ from app.models.test_case import TestCaseDB
 from app.models.test_result import TestResultDB, TestMetrics
 from app.models.tool_definition import ToolDefinitionDB
 from app.services.llm_service import LLMService
+from app.services.agent_service import AgentService
 from app.services.evaluation_service import EvaluationService
 from app.config import settings
 
@@ -109,6 +110,7 @@ async def execute_batch_test(
         for test_case in test_cases:
             # 加载测试用例关联的工具定义
             tools = None
+            tools_config = {}
             if test_case.tools:
                 tool_definitions = db.query(ToolDefinitionDB).filter(ToolDefinitionDB.id.in_(test_case.tools)).all()
                 # 转换为OpenAI API格式
@@ -123,29 +125,66 @@ async def execute_batch_test(
                     }
                     for tool in tool_definitions
                 ]
+                # 构建工具配置字典（用于mock）
+                tools_config = {tool.name: tool.mock_responses for tool in tool_definitions}
             
             for model in models:
-                # 调用模型
-                result = await LLMService.call_model(
-                    model_config=model,
-                    prompt=test_case.prompt,
-                    system_prompt=test_case.system_prompt,
-                    params=params,
-                    tools=tools,
-                    stream=False,
-                    conversation_history=test_case.conversation_history  # 传入对话历史
-                )
+                # 判断是否使用Agent模式
+                # 如果测试用例配置了use_mock或有工具定义，使用Agent模式
+                use_agent_mode = tools is not None
+                use_mock = test_case.use_mock if test_case.use_mock is not None else False
+                
+                if use_agent_mode:
+                    # 使用Agent服务（支持多轮工具调用）
+                    result = await AgentService.run_agent(
+                        model_config=model,
+                        content=test_case.prompt,
+                        system_prompt=test_case.system_prompt,
+                        params=params,
+                        tools=tools,
+                        tools_config=tools_config,
+                        conversation_history=test_case.conversation_history,
+                        use_mock=use_mock,
+                        max_iterations=5
+                    )
+                else:
+                    # 使用原有的单次调用（无工具）
+                    result = await LLMService.call_model(
+                        model_config=model,
+                        content=test_case.prompt,
+                        system_prompt=test_case.system_prompt,
+                        params=params,
+                        tools=None,
+                        stream=False,
+                        conversation_history=test_case.conversation_history
+                    )
                 
                 # 评估结果
                 score = None
                 if result.get("status") == "success":
+                    # 从tool_call_history提取工具调用（如果有）
+                    tool_calls_for_eval = None
+                    if result.get("tool_call_history"):
+                        # 转换为评估服务期望的格式
+                        tool_calls_for_eval = [
+                            {
+                                "function": {
+                                    "name": tc["tool_name"],
+                                    "arguments": tc["arguments"]
+                                }
+                            }
+                            for tc in result.get("tool_call_history", [])
+                        ]
+                    
                     score, eval_details = EvaluationService.evaluate_result(
                         output=result.get("output", ""),
                         expected_output=test_case.expected_output,
-                        tool_calls=result.get("tool_calls"),
+                        tool_calls=tool_calls_for_eval or result.get("tool_calls"),
                         expected_tool_calls=test_case.expected_tool_calls,
                         evaluation_criteria=test_case.evaluation_criteria,
-                        evaluation_weights=test_case.evaluation_weights  # 传入自定义权重
+                        evaluation_weights=test_case.evaluation_weights,
+                        conversation_history=result.get("conversation_history"),
+                        tool_call_history=result.get("tool_call_history")
                     )
                     # 将评估详情添加到metrics中
                     metrics = result.get("metrics", {})
