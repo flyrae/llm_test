@@ -455,6 +455,33 @@
                                    placeholder="用逗号分隔多个标签">
                         </div>
 
+                        <!-- Mock响应配置 (新增) -->
+                        <div class="border-t pt-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <label class="block text-sm font-medium text-gray-700">
+                                    <i class="fas fa-mask mr-2 text-purple-600"></i>
+                                    模拟响应配置 (用于Agent训练)
+                                </label>
+                                <button type="button" @click="showMockHelp = !showMockHelp"
+                                        class="text-xs text-purple-600 hover:underline">
+                                    <i class="fas fa-question-circle mr-1"></i>查看说明
+                                </button>
+                            </div>
+                            
+                            <div v-if="showMockHelp" class="mb-4 p-4 bg-purple-50 rounded text-sm">
+                                <p class="font-medium mb-2">模拟响应配置说明：</p>
+                                <p class="text-gray-700 mb-2">配置此项后，在测试时可以使用模拟数据而不调用真实API，适合Agent训练场景。</p>
+                                <pre class="text-xs overflow-x-auto bg-white p-2 rounded">{{mockResponseExample}}</pre>
+                            </div>
+
+                            <textarea v-model="mockResponsesJson" rows="12"
+                                      class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 font-mono text-sm"
+                                      placeholder='{"enabled": true, "response_type": "static", "static_response": {...}}'></textarea>
+                            <p class="mt-1 text-sm text-gray-500">
+                                配置模拟工具执行的响应规则 (可选)
+                            </p>
+                        </div>
+
                         <div class="flex justify-end space-x-4 pt-4 border-t">
                             <button type="button" @click="closeModal"
                                     class="px-6 py-2 border rounded-lg hover:bg-gray-50">
@@ -590,7 +617,9 @@
                     formData: this.getEmptyForm(),
                     parametersJson: '',
                     exampleCallJson: '',
+                    mockResponsesJson: '',
                     showParametersHelp: false,
+                    showMockHelp: false,
                     parametersExample: `{
   "type": "object",
   "properties": {
@@ -605,6 +634,36 @@
     }
   },
   "required": ["location"]
+}`,
+                    mockResponseExample: `{
+  "enabled": true,
+  "response_type": "static",
+  "static_response": {
+    "success": true,
+    "temperature": 25,
+    "weather": "晴天",
+    "humidity": 60
+  },
+  "latency_ms": {"min": 100, "max": 500}
+}
+
+或使用模板模式:
+{
+  "enabled": true,
+  "response_type": "template",
+  "response_templates": [
+    {
+      "condition": {"city": "北京"},
+      "response": {"temperature": 25, "weather": "晴天"}
+    },
+    {
+      "condition": {"city": "*"},
+      "response": {
+        "temperature": "{{random(15,30)}}",
+        "weather": "{{random(['晴天','多云','阴天'])}}"
+      }
+    }
+  ]
 }`,
                     // 批量导入相关
                     showImportModalFlag: false,
@@ -774,6 +833,7 @@
                     };
                     this.parametersJson = JSON.stringify(tool.parameters, null, 2);
                     this.exampleCallJson = tool.example_call ? JSON.stringify(tool.example_call, null, 2) : '';
+                    this.mockResponsesJson = tool.mock_responses ? JSON.stringify(tool.mock_responses, null, 2) : '';
                     this.showModal = true;
                 },
                 async saveTool() {
@@ -785,11 +845,13 @@
                             required: []
                         };
                         const example_call = this.exampleCallJson ? JSON.parse(this.exampleCallJson) : null;
+                        const mock_responses = this.mockResponsesJson ? JSON.parse(this.mockResponsesJson) : null;
 
                         const data = {
                             ...this.formData,
                             parameters,
-                            example_call
+                            example_call,
+                            mock_responses
                         };
 
                         if (this.editingTool) {
