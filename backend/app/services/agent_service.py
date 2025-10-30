@@ -97,6 +97,13 @@ class AgentService:
                 logger.info(f"✅ Agent 完成，无需工具调用")
                 logger.info(f"📝 最终输出: {result.get('output', '')[:200]}...")
                 
+                # 将最终的 assistant 响应添加到对话历史
+                final_assistant_message = {
+                    "role": "assistant",
+                    "content": result.get("output", "")
+                }
+                messages.append(final_assistant_message)
+                
                 return {
                     "output": result.get("output", ""),
                     "metrics": {

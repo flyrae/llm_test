@@ -1103,7 +1103,7 @@
                             </div>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-                            <pre class="whitespace-pre-wrap text-sm text-gray-800">{{ response.output }}<span class="inline-block w-2 h-4 bg-blue-600 animate-pulse ml-1"></span></pre>
+                            <pre class="whitespace-pre-wrap text-sm text-gray-800">{{ response && response.output ? response.output : '' }}<span class="inline-block w-2 h-4 bg-blue-600 animate-pulse ml-1"></span></pre>
                         </div>
                     </div>
 
@@ -1200,17 +1200,17 @@
                         </h3>
                         
                         <!-- 文本输出 -->
-                        <div v-if="response.output" 
+                        <div v-if="response && response.output" 
                              class="bg-gray-50 rounded-lg p-4 mb-4"
-                             :class="{'bg-blue-50 border border-blue-200': response.output.includes('🔧 工具调用')}">
-                            <div v-if="response.output.includes('🔧 工具调用')" class="mb-2">
+                             :class="{'bg-blue-50 border border-blue-200': response.output && response.output.includes('🔧 工具调用')}">
+                            <div v-if="response.output && response.output.includes('🔧 工具调用')" class="mb-2">
                                 <span class="inline-block px-2 py-1 bg-blue-600 text-white text-xs rounded">
                                     <i class="fas fa-tools mr-1"></i>工具调用摘要
                                 </span>
                             </div>
                             <div class="whitespace-pre-wrap">{{ response.output }}</div>
                         </div>
-                        <div v-else-if="response.tool_calls && response.tool_calls.length > 0"
+        <div v-else-if="response && response.tool_calls && response.tool_calls.length > 0"
                              class="bg-blue-50 rounded-lg p-4 mb-4 text-gray-600 italic">
                             模型没有返回文本，仅请求了工具调用（见下方详情）
                         </div>
@@ -1219,7 +1219,7 @@
                         </div>
                         
                         <!-- 工具调用信息 -->
-                        <div v-if="response.tool_calls && response.tool_calls.length > 0" 
+                        <div v-if="response && response.tool_calls && response.tool_calls.length > 0" 
                              class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                             <h4 class="text-md font-bold text-gray-800 mb-3">
                                 <i class="fas fa-wrench mr-2 text-yellow-600"></i>模型请求的工具调用
@@ -1257,20 +1257,20 @@
                         <!-- 性能指标 -->
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-blue-600">{{ response.metrics.response_time?.toFixed(2) }}s</div>
+                                <div class="text-2xl font-bold text-blue-600">{{ response.metrics?.response_time?.toFixed(2) || '0.00' }}s</div>
                                 <div class="text-sm text-gray-600">响应时间</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-green-600">{{ response.metrics.total_tokens }}</div>
+                                <div class="text-2xl font-bold text-green-600">{{ response.metrics?.total_tokens || 0 }}</div>
                                 <div class="text-sm text-gray-600">总Tokens</div>
                             </div>
                             <div class="text-center">
                                 <div class="text-2xl font-bold text-purple-600">
-                                    ${{ response.metrics.estimated_cost?.toFixed(4) }}
+                                    ${{ response.metrics?.estimated_cost?.toFixed(4) || '0.0000' }}
                                 </div>
                                 <div class="text-sm text-gray-600">估算成本</div>
                             </div>
-                            <div class="text-center">
+            <div class="text-center">
                                 <div class="text-2xl font-bold"
                                      :class="response.status === 'success' ? 'text-green-600' : 'text-red-600'">
                                     <i :class="response.status === 'success' ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
@@ -1280,15 +1280,15 @@
                         </div>
 
                         <!-- 错误信息 -->
-                        <div v-if="response.error_message" 
+                        <div v-if="response && response.error_message" 
                              class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
                             {{ response.error_message }}
                         </div>
                         
                         <!-- 保存为测试用例按钮 -->
-                        <div v-if="response.status === 'success'" class="mt-6 pt-4 border-t">
-                            <button @click="showSaveTestCaseModal = true"
+                        <div v-if="response && response.status === 'success' && lastRequest" class="mt-6 pt-4 border-t">
+                            <button @click="openSaveTestCaseModal"
                                     class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg">
                                 <i class="fas fa-save mr-2"></i>保存为测试用例
                             </button>
@@ -1302,7 +1302,7 @@
         </main>
         
         <!-- 保存测试用例模态框 -->
-        <div v-if="showSaveTestCaseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div v-if="showSaveTestCaseModal && response && lastRequest" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-screen overflow-y-auto m-4">
                 <div class="p-6 border-b sticky top-0 bg-white z-10">
                     <div class="flex items-center justify-between">
@@ -1354,22 +1354,22 @@
                                 <i class="fas fa-info-circle mr-1"></i>本次模型响应：
                             </div>
                             <div class="space-y-2">
-                                <div v-if="response.output" class="text-xs">
+                                <div v-if="response && response.output" class="text-xs">
                                     <span class="font-medium text-gray-600">文本输出：</span>
                                     <div class="bg-gray-50 p-2 rounded mt-1 max-h-24 overflow-y-auto">
                                         <pre class="whitespace-pre-wrap text-gray-700">{{ response.output.substring(0, 200) }}{{ response.output.length > 200 ? '...' : '' }}</pre>
                                     </div>
                                 </div>
-                                <div v-if="response.tool_calls && response.tool_calls.length > 0" class="text-xs">
+                                <div v-if="response && response.tool_calls && response.tool_calls.length > 0" class="text-xs">
                                     <span class="font-medium text-gray-600">工具调用：</span>
                                     <div class="bg-yellow-50 p-2 rounded mt-1">
                                         <div v-for="(call, idx) in response.tool_calls" :key="idx" class="mb-1 last:mb-0">
-                                            <span class="font-medium">{{ call.function.name }}</span>
-                                            <span class="text-gray-500 ml-1">({{ typeof call.function.arguments === 'string' ? call.function.arguments.substring(0, 50) : JSON.stringify(call.function.arguments).substring(0, 50) }}...)</span>
+                                            <span v-if="call && call.function" class="font-medium">{{ call.function.name }}</span>
+                                            <span v-if="call && call.function && call.function.arguments" class="text-gray-500 ml-1">({{ typeof call.function.arguments === 'string' ? call.function.arguments.substring(0, 50) : JSON.stringify(call.function.arguments).substring(0, 50) }}...)</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div v-if="!response.output && (!response.tool_calls || response.tool_calls.length === 0)" class="text-xs text-gray-400 italic">
+                                <div v-if="response && !response.output && (!response.tool_calls || response.tool_calls.length === 0)" class="text-xs text-gray-400 italic">
                                     无输出
                                 </div>
                             </div>
@@ -1378,12 +1378,12 @@
                         <!-- 快速填充按钮 -->
                         <div class="flex gap-2 mb-3">
                             <button type="button" @click="fillExpectedOutput"
-                                    :disabled="!response.output"
+                                    :disabled="!response || !response.output"
                                     class="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                                 <i class="fas fa-file-alt mr-1"></i>使用文本输出作为期望
                             </button>
                             <button type="button" @click="fillExpectedToolCalls"
-                                    v-if="response.tool_calls && response.tool_calls.length > 0"
+                                    v-if="response && response.tool_calls && response.tool_calls.length > 0"
                                     class="flex-1 px-3 py-2 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 text-sm">
                                 <i class="fas fa-wrench mr-1"></i>使用工具调用作为期望
                             </button>
@@ -1420,7 +1420,7 @@
                             <i class="fas fa-eye mr-1"></i>将要保存的内容
                         </h3>
                         <div class="space-y-2 text-sm">
-                            <div v-if="lastRequest.system_prompt">
+                            <div v-if="lastRequest && lastRequest.system_prompt">
                                 <span class="font-medium text-gray-700">系统提示词：</span>
                                 <span class="text-gray-600">已包含</span>
                             </div>
@@ -1432,15 +1432,15 @@
                                 <span class="font-medium text-gray-700">对话类型：</span>
                                 <span class="text-gray-600">单轮对话</span>
                             </div>
-                            <div>
+                            <div v-if="lastRequest && lastRequest.prompt">
                                 <span class="font-medium text-gray-700">当前提示词：</span>
                                 <span class="text-gray-600">{{ lastRequest.prompt.substring(0, 50) }}...</span>
                             </div>
-                            <div v-if="lastRequest.tool_ids && lastRequest.tool_ids.length > 0">
+                            <div v-if="lastRequest && lastRequest.tool_ids && lastRequest.tool_ids.length > 0">
                                 <span class="font-medium text-gray-700">关联工具：</span>
                                 <span class="text-gray-600">{{ lastRequest.tool_ids.length }} 个</span>
                             </div>
-                            <div v-if="response.tool_calls && response.tool_calls.length > 0" class="pt-2 border-t border-blue-300">
+                            <div v-if="response && response.tool_calls && response.tool_calls.length > 0" class="pt-2 border-t border-blue-300">
                                 <span class="font-medium text-gray-700">实际工具调用：</span>
                                 <span class="text-gray-600">{{ response.tool_calls.length }} 个</span>
                             </div>
@@ -1535,7 +1535,25 @@
                 await this.loadSystemPrompts();
                 this.loadHistoryFromStorage();
             },
+            errorCaptured(err, instance, info) {
+                console.error('Vue Error Captured:');
+                console.error('Error:', err);
+                console.error('Component:', instance);
+                console.error('Info:', info);
+                console.error('Stack:', err.stack);
+                // 返回false阻止错误继续传播
+                return false;
+            },
             methods: {
+                openSaveTestCaseModal() {
+                    // 确保response和lastRequest都存在且有效
+                    if (!this.response || !this.lastRequest) {
+                        console.error('无法打开保存模态框：缺少必要的数据');
+                        alert('当前没有可保存的测试用例数据');
+                        return;
+                    }
+                    this.showSaveTestCaseModal = true;
+                },
                 async loadSystemPrompts() {
                     try {
                         this.systemPrompts = await api.get('/api/system-prompts/');
@@ -2003,7 +2021,11 @@
                 // 切换工具调用详情的展开/折叠状态
                 toggleToolCallDetails(messageIndex, callIndex) {
                     const key = `${messageIndex}-${callIndex}`;
-                    this.expandedToolCalls[key] = !this.expandedToolCalls[key];
+                    // 使用对象展开运算符创建新对象以确保响应式更新
+                    this.expandedToolCalls = {
+                        ...this.expandedToolCalls,
+                        [key]: !this.expandedToolCalls[key]
+                    };
                 },
                 // 检查工具调用详情是否展开
                 isToolCallExpanded(messageIndex, callIndex) {
